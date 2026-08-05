@@ -24,8 +24,8 @@ import pandas as pd
 from pathlib import Path
 from scipy.optimize import minimize
 
-DATA_PATH: Path = Path("..", "mrio_pipeline", "input_data")
-OUT_PATH: Path = Path(".", "calculated_parameters", "intensification_factors_tvp.csv")
+DATA_PATH: Path = Path("..", "..", "mrio_pipeline", "input_data")
+OUT_PATH: Path = Path("..", "beta_parameters", "intensification_factors_tvp.csv")
 
 MIN_OBS: int = 8  # minimum number of valid (non-missing) yearly diff pairs required to fit
 

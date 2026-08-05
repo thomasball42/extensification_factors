@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
 
-dat_path = Path("calculated_parameters") / "intensification_factors_tvp.csv"
+dat_path = Path("..", "beta_parameters") / "extensification_factors_tvp.csv"
 figs_path = Path("..", "..", "figs")
 
 SAVE = True
@@ -208,5 +208,5 @@ fig.tight_layout()
 plt.show()
 
 if SAVE:
-    filename = f"intensification_factors_tvp{f"_{items[0]}" if len(items) == 1 else "multi"}_{'_'.join(area_labels)}.png"
+    filename = f"extensification_factors_tvp{f"_{items[0]}" if len(items) == 1 else "multi"}_{'_'.join(area_labels)}.png"
     fig.savefig(figs_path / filename, dpi=300, bbox_inches="tight")
