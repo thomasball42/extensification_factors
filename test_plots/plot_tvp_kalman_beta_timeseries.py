@@ -3,12 +3,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
 
-dat_path = Path("..", "beta_parameters") / "extensification_factors_tvp.csv"
-figs_path = Path("..", "..", "figs")
+dat_path = Path("outputs") / "beta_crops.csv"
+figs_path = Path("..", "figs")
 
 SAVE = True
 
-country_codes = pd.read_excel(Path("..", "mrio_pipeline", "input_data", "nocsDataExport_20251021-164754.xlsx"))
+country_codes = pd.read_excel(Path("data") / "inputs" / "nocsDataExport_20251021-164754.xlsx")
+
 
 print(country_codes)
 
@@ -25,45 +26,48 @@ all_items = df.Item.unique()
 all_areas = df.Area.unique()
 
 ifilt = [
-        "rice", 
-        "wheat", 
+        # "rice", 
+        # "wheat", 
         # "maize",
         # "sorghum",
-        "soy",
+        # "soy",
         # "barley",
+        "Cereal"
         ]
 
 iexcl = [
-        "buckwheat", "green corn"
+        "buckwheat", "green corn", "n.e.c."
          ]
 
 afilt = [
         # "United Kingdom", "France", "Brazil", "China", "India", "United States"
-        "World",
+        # "World",
         # "United Kingdom",
         # "Brazil",
         # "Argentina",
         # "India",
         # "China, mainland",
-        # "Europe",
-        # "Africa", 
-        # "South America",
-        # "North America",
-        # "Asia",
+        "Europe",
+        "Africa",
+        # "Latin America"
+        "South America",
+        "Northern America",
+        "Eastern Asia",
+        "Southern Asia",
         # "United States of America",
         ]
  
 aexcl = [
-        # "taiwan",
-        # "southern",
-        # "northern",
-        # "western", 
-        # "eastern",
-        # "republic",
-        # # "union",
-        # "middle",
-        # "South Africa",
-        # "central"
+        "taiwan",
+        "southern",
+        "northern",
+        "western", 
+        "eastern",
+        "republic",
+        "union",
+        "middle",
+        "South Africa",
+        "central"
         ]
 
 def _filter_list(all_, filt_, excl_):
@@ -74,7 +78,7 @@ def _filter_list(all_, filt_, excl_):
     return [
         i for i in all_
         if any(f in i.lower() for f in filt)
-        and not any(f in i.lower() for f in excl)
+        and (i.lower() in filt or not any(f in i.lower() for f in excl))
     ]
 
 items = _filter_list(all_items, ifilt, iexcl)
