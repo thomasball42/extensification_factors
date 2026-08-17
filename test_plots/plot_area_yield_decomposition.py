@@ -17,11 +17,16 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from pathlib import Path
+import os
 
 DATA_PATH = Path("data") / "inputs"
-figs_path = Path("..", "figs")
+figs_path = Path("..") /  "figs" / "area_yield_decomp"
 
 SAVE = True
+
+# main
+
+os.makedirs(figs_path, exist_ok=True)
 
 elements = ["Area harvested", "Production", "Yield"]
 columns = ["Area", "Area Code", "Item", "Item Code", "Element", "Year", "Value", "Unit"]
@@ -49,15 +54,16 @@ all_items = df.Item.unique()
 all_areas = df.Area.unique()
 
 ifilt = [
-        "Wheat",
+        "Cereal"
         ]
 
 iexcl = [
         "buckwheat",
+        "n.e.c."
         ]
 
 afilt = [
-        "Africa",
+        "Europe",
         ]
 
 aexcl = [

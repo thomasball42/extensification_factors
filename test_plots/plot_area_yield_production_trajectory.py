@@ -17,11 +17,48 @@ import numpy as np
 import pandas as pd
 from matplotlib.lines import Line2D
 from pathlib import Path
+import os
 
 DATA_PATH = Path("data") / "inputs"
-figs_path = Path("..", "figs")
+figs_path = Path("..") / "figs" / "area_yield_production_trajectory"
 
 SAVE = True
+
+#filtering
+
+ifilt = [
+        "Cereal"
+        ]
+
+iexcl = [
+        "buckwheat",
+        "n.e.c."
+        ]
+
+afilt = [
+        "Africa",
+        "Europe",
+        "Northern America",
+        "Eastern Asia",
+        "Southern Asia",
+        "South America",
+        ]
+
+aexcl = [
+        "taiwan",
+        "southern",
+        "northern",
+        "western",
+        "eastern",
+        "republic",
+        "union",
+        "middle",
+        "South Africa",
+        "central"
+        ]
+
+# main
+os.makedirs(figs_path, exist_ok=True)
 
 elements = ["Area harvested", "Production", "Yield"]
 columns = ["Area", "Area Code", "Item", "Item Code", "Element", "Year", "Value", "Unit"]
@@ -47,34 +84,6 @@ df = df[df.Item.isin(crop_items)]
 
 all_items = df.Item.unique()
 all_areas = df.Area.unique()
-
-ifilt = [
-        "Cereal"
-        ]
-
-iexcl = [
-        "buckwheat",
-        "n.e.c."
-        ]
-
-afilt = [
-        "Africa",
-        "Europe",
-        "Northern America",
-        ]
-
-aexcl = [
-        "taiwan",
-        "southern",
-        "northern",
-        "western",
-        "eastern",
-        "republic",
-        "union",
-        "middle",
-        "South Africa",
-        "central"
-        ]
 
 
 def _filter_list(all_, filt_, excl_):
@@ -146,21 +155,31 @@ area_cmaps = {
 
 norm = mcolors.Normalize(vmin=wide.Year.min(), vmax=wide.Year.max())
 
-fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
+fig_rel, (ax1_rel, ax2_rel) = plt.subplots(1, 2, figsize=(12, 6))
+fig_raw, (ax1_raw, ax2_raw) = plt.subplots(1, 2, figsize=(12, 6))
 
 for area in areas:
     g = wide[wide.Area == area]
     if g.empty:
         continue
 
-    x = g["Area harvested"].values / g["Area harvested"].values[0]
-    y_yield = g["Yield"].values / g["Yield"].values[0]  
-    y_prod = g["Production"].values / g["Production"].values[0]
+    x_raw = g["Area harvested"].values
+    yield_raw = g["Yield"].values
+    prod_raw = g["Production"].values
+    x_rel = x_raw / x_raw[0]
+    yield_rel = yield_raw / yield_raw[0]
+    prod_rel = prod_raw / prod_raw[0]
     years = g["Year"].values
     cmap = area_cmaps[area]
     base_color = base_colors[area]
 
-    for ax, y in [(ax1, y_yield), (ax2, y_prod)]:
+    panels = [
+        (ax1_rel, x_rel, yield_rel, True),
+        (ax2_rel, x_rel, prod_rel, True),
+        (ax1_raw, x_raw, yield_raw, False),
+        (ax2_raw, x_raw, prod_raw, False),
+    ]
+    for ax, x, y, ref_lines in panels:
         ax.plot(x, y, color=base_color, alpha=0.3, lw=1, zorder=1)
         ax.scatter(x, y, c=years, cmap=cmap, norm=norm, s=30, zorder=2, edgecolor="none")
         ax.annotate(str(years[0]), (x[0], y[0]), fontsize=7, color=base_color,
@@ -168,19 +187,37 @@ for area in areas:
         ax.annotate(str(years[-1]), (x[-1], y[-1]), fontsize=7, color=base_color,
                     xytext=(4, 4), textcoords="offset points")
 
-ax1.set_xlabel(f"Area harvested ({ha_unit})")
-ax1.set_ylabel(f"Yield ({yield_unit})")
-ax2.set_xlabel(f"Area harvested ({ha_unit})")
-ax2.set_ylabel(f"Production ({prod_unit})")
+        if ref_lines:
+            ax.axhline(1, color="0.7", linestyle="--", linewidth=0.8, zorder=0)
+            ax.axvline(1, color="0.7", linestyle="--", linewidth=0.8, zorder=0)
+
+
+ax1_rel.set_xlabel(f"Area harvested (relative to {wide.Year.min()})")
+ax1_rel.set_ylabel(f"Yield (relative to {wide.Year.min()})")
+ax2_rel.set_xlabel(f"Area harvested (relative to {wide.Year.min()})")
+ax2_rel.set_ylabel(f"Production (relative to {wide.Year.min()})")
+
+ax1_raw.set_xlabel(f"Area harvested ({ha_unit})")
+ax1_raw.set_ylabel(f"Yield ({yield_unit})")
+ax2_raw.set_xlabel(f"Area harvested ({ha_unit})")
+ax2_raw.set_ylabel(f"Production ({prod_unit})")
+
 
 legend_handles = [Line2D([0], [0], color=c, lw=2) for c in base_colors.values()]
-fig.legend(legend_handles, base_colors.keys(), title="Area", loc="upper center",
-           ncol=min(len(areas), 6), bbox_to_anchor=(0.5, 1.0))
 
-fig.suptitle(item, y=1.08)
-fig.tight_layout()
+for fig, ax_left, title_suffix in [
+    (fig_rel, ax1_rel, "relative change"),
+    (fig_raw, ax1_raw, "raw values"),
+]:
+    fig.legend(legend_handles, base_colors.keys(), title="Area", loc="upper center",
+               ncol=min(len(areas), 6), bbox_to_anchor=(0.5, 1.0))
+    fig.suptitle(f"{item} ({title_suffix})", y=1.08)
+    fig.tight_layout()
+
 plt.show()
 
 if SAVE:
-    filename = f"area_yield_production_trajectory_{item}_{'_'.join(areas)}.png"
-    fig.savefig(figs_path / filename, dpi=300, bbox_inches="tight")
+    filename_rel = f"AYP_relative_{item}_{'_'.join(areas)}.png"
+    filename_raw = f"AYP_raw_{item}_{'_'.join(areas)}.png"
+    fig_rel.savefig(figs_path / filename_rel, dpi=300, bbox_inches="tight")
+    fig_raw.savefig(figs_path / filename_raw, dpi=300, bbox_inches="tight")

@@ -2,27 +2,14 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
+import os
 
 dat_path = Path("outputs") / "beta_animals.csv"
-figs_path = Path("..", "figs", "testing")
+figs_path = Path("..") / "figs" / "beta_timeseries_animals"
+
 
 SAVE = True
-
-country_codes = pd.read_excel(Path("data") / "inputs" / "nocsDataExport_20251021-164754.xlsx")
-
-df = pd.read_csv(dat_path)
-
-df = df.merge(country_codes[["FAOSTAT", "ISO3"]],
-              left_on="Area Code", right_on="FAOSTAT",
-              how="left",
-              )
-df = df.drop(columns=["FAOSTAT"])
-
-# note: unlike the crop pipeline, beta_animals.csv has a single "Item"
-# ("All pasture-based animal products") per Area, so there's no item
-# dimension to filter/color by here -- only Area.
-all_areas = df.Area.unique()
-
+# filtering
 afilt = [
         # "World",
         "United Kingdom",
@@ -50,6 +37,26 @@ aexcl = [
         # "South Africa",
         # "central"
         ]
+
+# main
+os.makedirs(figs_path, exist_ok=True)
+
+country_codes = pd.read_excel(Path("data") / "inputs" / "nocsDataExport_20251021-164754.xlsx")
+
+df = pd.read_csv(dat_path)
+
+df = df.merge(country_codes[["FAOSTAT", "ISO3"]],
+              left_on="Area Code", right_on="FAOSTAT",
+              how="left",
+              )
+df = df.drop(columns=["FAOSTAT"])
+
+# note: unlike the crop pipeline, beta_animals.csv has a single "Item"
+# ("All pasture-based animal products") per Area, so there's no item
+# dimension to filter/color by here -- only Area.
+all_areas = df.Area.unique()
+
+
 
 def _filter_list(all_, filt_, excl_):
     if not filt_:

@@ -2,29 +2,13 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
+import os
 
 dat_path = Path("outputs") / "beta_crops.csv"
-figs_path = Path("..", "figs")
-
+figs_path = Path("..") / "figs" / "beta_timeseries_crops"
 SAVE = True
 
-country_codes = pd.read_excel(Path("data") / "inputs" / "nocsDataExport_20251021-164754.xlsx")
-
-
-print(country_codes)
-
-df = pd.read_csv(dat_path)
-
-df = df.merge(country_codes[["FAOSTAT", "ISO3"]], 
-              left_on="Area Code", right_on="FAOSTAT", 
-              how="left",
-              )
-df = df.drop(columns=["FAOSTAT"])
-
-
-all_items = df.Item.unique()
-all_areas = df.Area.unique()
-
+# filtering
 ifilt = [
         # "rice", 
         # "wheat", 
@@ -69,6 +53,24 @@ aexcl = [
         "South Africa",
         "central"
         ]
+
+# main
+
+country_codes = pd.read_excel(Path("data") / "inputs" / "nocsDataExport_20251021-164754.xlsx")
+
+os.makedirs(figs_path, exist_ok=True)
+
+df = pd.read_csv(dat_path)
+
+df = df.merge(country_codes[["FAOSTAT", "ISO3"]], 
+              left_on="Area Code", right_on="FAOSTAT", 
+              how="left",
+              )
+df = df.drop(columns=["FAOSTAT"])
+
+
+all_items = df.Item.unique()
+all_areas = df.Area.unique()
 
 def _filter_list(all_, filt_, excl_):
     if not filt_:
