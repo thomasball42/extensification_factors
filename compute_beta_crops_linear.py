@@ -1,29 +1,26 @@
 """
-Time-varying-parameter (Kalman filter/smoother) version of the extensification-
-factor pipeline.
+Static (non-time-varying) OLS counterpart to compute_beta_crops.py.
 
-Replaces fixed-width rolling-window OLS with a single state-space model per
-(Area, Item) series:
+Fits a single full-sample beta per (Area, Item) series:
 
-    a_t = beta_t * p_t + u_t          u_t ~ N(0, R)      [observation eq.]
-    beta_t = beta_{t-1} + eta_t       eta_t ~ N(0, Q)     [state eq., random walk]
+    Delta ln(Area harvested)_t = beta * Delta ln(Production)_t + eps_t
 
-where a_t = Delta ln(Area harvested), p_t = Delta ln(Production). Q and R are
-estimated per series by maximum likelihood. Output is the *smoothed* beta_t
-(uses the whole series, not just past data) plus its standard error, for
-every year.
-
+by OLS, using the same reindexed/demeaned annual differences
+(build_annual_diffs) that the TVP pipeline uses, so this output is a
+like-for-like comparison baseline for outputs/beta_crops.csv -- see
+validations_scripts/compare_tvp_with_linear.py.
 """
 
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from _kalman_functions import kalman_filter, rts_smoother, fit_tvp_beta, build_annual_diffs
+from scipy.stats import linregress
+from _kalman_functions import build_annual_diffs
 
-DATA_PATH: Path = Path("data") / "inputs" # this needs the full production dataset from FAO
-OUT_PATH: Path = Path("data", "outputs", "beta_crops.csv")
+DATA_PATH: Path = Path("data") / "inputs"
+OUT_PATH: Path = Path("outputs", "beta_crops_linear.csv")
 
-MIN_OBS: int = 15  # minimum number of valid (non-missing) yearly diff pairs required to fit
+MIN_OBS: int = 15  # matches compute_beta_crops.py so both outputs cover the same series
 
 elements = ["Area harvested", "Production", "Yield"]
 columns = ["Area", "Area Code", "Item", "Item Code", "Element", "Year", "Value", "Unit"]
@@ -58,7 +55,7 @@ wide = df.pivot_table(
 
 records = []
 groups = wide.groupby(["Area", "Area Code", "Item", "Item Code"])
-for i, ((area, area_code, item, item_code), g) in enumerate(groups): 
+for i, ((area, area_code, item, item_code), g) in enumerate(groups):
 
     print(i + 1, "/", len(groups), area, item, item_code)
 
@@ -72,13 +69,19 @@ for i, ((area, area_code, item, item_code), g) in enumerate(groups):
 
     years = g["Year"].values.astype(int)
 
-    diff_years, a_t, p_t = build_annual_diffs(years, log_AH, log_P)
+    _, a_t, p_t = build_annual_diffs(years, log_AH, log_P)
 
-    fit = fit_tvp_beta(a_t, p_t, min_obs=MIN_OBS)
-    if fit is None:
+    valid = np.isfinite(a_t) & np.isfinite(p_t)
+    if valid.sum() < MIN_OBS:
         continue
 
-    record = {
+    try:
+        beta, intercept, r_value, p_value, std_err = linregress(p_t[valid], a_t[valid])
+    except Exception as e:
+        print(f"Error for {area} - {item}: {e}")
+        continue
+
+    records.append({
         "Area": area,
         "Area Code": area_code,
         "Item": item,
@@ -87,28 +90,12 @@ for i, ((area, area_code, item, item_code), g) in enumerate(groups):
         f"current_area_harvested_{ha_unit}": g["Area harvested"].values[-1],
         f"current_production_{prod_unit}": g["Production"].values[-1],
         f"current_yield_{yield_unit}": g["Yield"].values[-1],
-        "Q_hat": fit["Q"],
-        "R_hat": fit["R"],
-    }
-
-    for yr, beta, se in zip(diff_years, fit["beta"], fit["se"]):
-        record[f"beta_{int(yr)}"] = beta
-        record[f"se_{int(yr)}"] = se
-
-    records.append(record)
+        "beta": beta,
+        "beta_se": std_err,
+        "n_obs": int(valid.sum()),
+    })
 
 out = pd.DataFrame.from_records(records)
-
-id_cols = [c for c in out.columns if not (c.startswith("beta_") or c.startswith("se_"))]
-beta_cols = sorted((c for c in out.columns if c.startswith("beta_")), key=lambda c: int(c.split("_")[1]))
-
-year_ordered_cols = []
-for bc in beta_cols:
-    yr = bc.split("_", 1)[1]
-    year_ordered_cols.append(bc)
-    year_ordered_cols.append(f"se_{yr}")
-
-out = out[id_cols + year_ordered_cols]
 
 OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
 out.to_csv(OUT_PATH, index=False)

@@ -116,6 +116,54 @@ def fit_tvp_beta(a, p, P0=1e6, min_obs=15):
     }
 
 
+def kalman_filter_diag(a, p, Q, R, P0=1e6, beta0=0.0, fit_upto=None):
+    """Same recursion as kalman_filter, extended for validation use: returns
+    per-step (v_t, F_t) one-step-ahead innovations/variances, and restricts
+    the log-likelihood sum to indices < fit_upto (e.g. a training window)
+    while still filtering through the full series -- used to fit on train
+    data only and then score predictions on held-out test data."""
+    T = len(a)
+    if fit_upto is None:
+        fit_upto = T
+    beta_filt = np.empty(T)
+    v_arr = np.full(T, np.nan)
+    F_arr = np.full(T, np.nan)
+    beta_prev, P_prev = beta0, P0
+    loglik = 0.0
+    for t in range(T):
+        beta_pred = beta_prev
+        P_pred = P_prev + Q
+        if np.isfinite(a[t]) and np.isfinite(p[t]):
+            Z = p[t]
+            F = Z * Z * P_pred + R
+            v = a[t] - Z * beta_pred
+            K = P_pred * Z / F
+            beta_t = beta_pred + K * v
+            P_t = P_pred - K * Z * P_pred
+            v_arr[t], F_arr[t] = v, F
+            if t < fit_upto:
+                loglik += -0.5 * (np.log(2 * np.pi * F) + v * v / F)
+        else:
+            beta_t, P_t = beta_pred, P_pred
+        beta_filt[t] = beta_t
+        beta_prev, P_prev = beta_t, P_t
+    return beta_filt, v_arr, F_arr, loglik
+
+
+def build_raw_diffs(years, log_AH, log_P):
+    """Reindex onto full calendar years and difference -- NOT demeaned here.
+    For train/test validation, demeaning must happen after the train/test
+    split (using train-only statistics) to avoid leaking test-period
+    information into the fit; see build_annual_diffs for the non-split case
+    used by the main pipeline, which demeans over all available points."""
+    full_years = np.arange(int(years.min()), int(years.max()) + 1)
+    ah = pd.Series(log_AH, index=years).reindex(full_years)
+    p_ = pd.Series(log_P, index=years).reindex(full_years)
+    a_t = ah.diff().values[1:].copy()
+    p_t = p_.diff().values[1:].copy()
+    return full_years[1:], a_t, p_t
+
+
 def build_annual_diffs(years, log_AH, log_P):
     """
     Reindex onto the full calendar-year range (filling gaps with NaN) before
