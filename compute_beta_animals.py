@@ -3,7 +3,7 @@ import json
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from _kalman_functions import kalman_filter, rts_smoother, fit_tvp_beta, build_annual_diffs
+from _functions import kalman_filter, rts_smoother, fit_tvp_beta, build_annual_diffs
 
 DATA_PATH: Path = Path("data") / "inputs" # this needs the full production dataset from FAO
 OUT_PATH: Path = Path("outputs", "beta_animals.csv")

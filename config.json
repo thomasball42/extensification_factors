@@ -63,5 +63,15 @@
     "6771": {"name": "Inland waters used for capture fisheries", "grazing": false},
     "6773": {"name": "Coastal waters", "grazing": false},
     "6774": {"name": "Cropland area under protective cover", "grazing": false}
+  },
+  "faostat_aggregates": {
+    "known_names": [
+      "Cereals, primary", "Coarse Grain, primary", "Pulses, Total",
+      "Fruit Primary", "Citrus Fruit, Total", "Treenuts, Total",
+      "Vegetables Primary", "Oilcrops, Oil Equivalent", "Oilcrops, Cake Equivalent",
+      "Roots and Tubers, Total", "Sugar Crops Primary", "Fibre Crops, Fibre Equivalent",
+      "Vegetables, leguminous", "Jute & Jute-like Fibres"
+    ],
+    "name_patterns": ["primary", "total", "equivalent"]
   }
 }

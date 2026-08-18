@@ -29,7 +29,7 @@ from pathlib import Path
 from scipy.optimize import minimize
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from _kalman_functions import kalman_filter_diag, build_raw_diffs
+from _functions import kalman_filter_diag, build_raw_diffs
 
 DATA_PATH: Path = Path("data") / "inputs"
 OUT_PATH: Path = Path("outputs") / "validation" / "holdout_validation.csv"

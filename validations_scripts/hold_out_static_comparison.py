@@ -16,68 +16,46 @@ For tractability this runs on a random sample of series by default (SAMPLE_N),
 matching the convention used in comparable gridded-dataset validation papers
 (e.g. cross-validating on a random subset of stations rather than all of
 them). Set SAMPLE_N = None for a full run.
+
+Production weighting weights the results using avg production over the timeseries
+
 """
 
+import sys
 import numpy as np
 import pandas as pd
 from pathlib import Path
 from scipy.optimize import minimize
 
-DATA_PATH: Path = Path("data") / "inputs"
-OUT_PATH: Path = Path("outputs") / "validation" / "holdout_static_comparison.csv"
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from _functions import kalman_filter_diag, build_raw_diffs
 
-MIN_TRAIN_OBS = 15
-HOLDOUT_YEARS = 10
-SAMPLE_N = 5000       # None = run on every qualifying series
+DATA_PATH: Path = Path("data") / "inputs"
+
+MIN_TRAIN_OBS = 30
+HOLDOUT_YEARS = 7
+SAMPLE_N = None       # None
 RANDOM_SEED = 0
+PRODUCTION_WEIGHTING = True
+
+OUT_PATH: Path = Path("outputs") / "validation" / f"holdout_static_comparison{"_pweighted" if PRODUCTION_WEIGHTING else ""}.csv"
+OUT_BY_ITEM_PATH: Path = Path("outputs") / "validation" / f"holdout_static_comparison_by_item{"_pweighted" if PRODUCTION_WEIGHTING else ""}.csv"
 
 elements = ["Area harvested", "Production", "Yield"]
 columns = ["Area", "Item", "Item Code", "Element", "Year", "Value", "Unit"]
 
 
-def kalman_filter_diag(a, p, Q, R, P0=1e6, beta0=0.0, fit_upto=None):
-    """Kalman recursion, restricted to accumulate log-likelihood only over
-    indices < fit_upto (the training window), while still filtering through
-    the full series so test-period one-step-ahead residuals are available."""
-    T = len(a)
-    if fit_upto is None:
-        fit_upto = T
-    v_arr = np.full(T, np.nan)
-    F_arr = np.full(T, np.nan)
-    beta_prev, P_prev = beta0, P0
-    loglik = 0.0
-    for t in range(T):
-        beta_pred = beta_prev
-        P_pred = P_prev + Q
-        if np.isfinite(a[t]) and np.isfinite(p[t]):
-            Z = p[t]
-            F = Z * Z * P_pred + R
-            v = a[t] - Z * beta_pred
-            K = P_pred * Z / F
-            beta_t = beta_pred + K * v
-            P_t = P_pred - K * Z * P_pred
-            v_arr[t], F_arr[t] = v, F
-            if t < fit_upto:
-                loglik += -0.5 * (np.log(2 * np.pi * F) + v * v / F)
-        else:
-            beta_t, P_t = beta_pred, P_pred
-        beta_prev, P_prev = beta_t, P_t
-    return v_arr, F_arr, loglik
-
-
-def build_raw_diffs(years, log_AH, log_P):
-    """Reindex onto full calendar years and difference -- NOT demeaned here;
-    demeaning happens after the train/test split, using train-only stats,
-    to avoid leaking test-period information into either model's fit."""
+def reindex_levels(years, values):
+    """Reindex a raw (non-differenced) series onto the full calendar-year
+    range, aligned with build_raw_diffs' diff_years (= full_years[1:]).
+    Used only to compute production weights for reporting -- not part of
+    any model fit, so this has no bearing on leakage/estimation validity."""
     full_years = np.arange(int(years.min()), int(years.max()) + 1)
-    ah = pd.Series(log_AH, index=years).reindex(full_years)
-    p_ = pd.Series(log_P, index=years).reindex(full_years)
-    a_t = ah.diff().values[1:].copy()
-    p_t = p_.diff().values[1:].copy()
-    return full_years[1:], a_t, p_t
+    s = pd.Series(values, index=years).reindex(full_years)
+    return s.values[1:]
 
 
-def compare_on_series(a_raw, p_raw, train_end):
+def compare_on_series(a_raw, p_raw, prod_level, train_end):
     T = len(a_raw)
     valid = np.isfinite(a_raw) & np.isfinite(p_raw)
     train_valid = valid.copy()
@@ -124,10 +102,15 @@ def compare_on_series(a_raw, p_raw, train_end):
     if not res.success:
         return None
     Q_hat, R_hat = np.exp(res.x)
-    v, F, _ = kalman_filter_diag(a, p, Q_hat, R_hat, fit_upto=T)
+    _, v, F, _ = kalman_filter_diag(a, p, Q_hat, R_hat, fit_upto=T)
     v_test = v[test_mask]
     mae_tvp = float(np.mean(np.abs(v_test)))
     bias_tvp = float(np.mean(v_test))
+
+    # --- production weight: mean production level over the held-out test years ---
+    test_avg_production = float(np.nanmean(prod_level[test_mask]))
+    if not np.isfinite(test_avg_production):
+        test_avg_production = 0.0
 
     return {
         "n_test": int(test_mask.sum()),
@@ -136,6 +119,7 @@ def compare_on_series(a_raw, p_raw, train_end):
         "mae_static": mae_static, "bias_static": bias_static,
         "mae_tvp": mae_tvp, "bias_tvp": bias_tvp,
         "tvp_beats_static": mae_tvp < mae_static,
+        "test_avg_production": test_avg_production,
     }
 
 
@@ -165,11 +149,12 @@ for i, ((area, item, item_code), g) in enumerate(groups):
         log_P = np.log(g["Production"].values)
     years = g["Year"].values.astype(int)
     diff_years, a_raw, p_raw = build_raw_diffs(years, log_AH, log_P)
+    prod_level = reindex_levels(years, g["Production"].values)
     T = len(diff_years)
     train_end = T - HOLDOUT_YEARS
     if train_end < MIN_TRAIN_OBS:
         continue
-    out = compare_on_series(a_raw, p_raw, train_end)
+    out = compare_on_series(a_raw, p_raw, prod_level, train_end)
     if out is None:
         continue
     out.update({"Area": area, "Item": item, "Item Code": item_code})
@@ -180,7 +165,54 @@ OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
 res_df.to_csv(OUT_PATH, index=False)
 
 print(f"\nCompared {len(res_df)} series (held-out prediction, {HOLDOUT_YEARS} test years each).")
+print(f"--- Unweighted (every series counts equally, regardless of size) ---")
 print(f"Aggregate MAE -- static baseline: {res_df['mae_static'].mean():.4f}")
 print(f"Aggregate MAE -- TVP:             {res_df['mae_tvp'].mean():.4f}")
 print(f"Share of series where TVP beats static baseline: {res_df['tvp_beats_static'].mean():.1%}")
-print(f"Written to {OUT_PATH}")
+
+if PRODUCTION_WEIGHTING:
+    w = res_df["test_avg_production"].values
+    usable = w > 0
+    if usable.sum() == 0:
+        print("\nProduction weighting requested but no series had usable production weights -- skipped.")
+    else:
+        wsub = res_df.loc[usable]
+        weights = wsub["test_avg_production"].values
+        print(f"\n--- Production-weighted, POOLED across all commodities ---")
+        print(f"({usable.sum()} of {len(res_df)} series had a usable weight; caveat: pooling raw tonnage")
+        print(f" across different commodities is not fully fair -- see module docstring)")
+        print(f"Weighted MAE -- static baseline: {np.average(wsub['mae_static'], weights=weights):.4f}")
+        print(f"Weighted MAE -- TVP:             {np.average(wsub['mae_tvp'], weights=weights):.4f}")
+        print(f"Weighted bias -- static baseline: {np.average(wsub['bias_static'], weights=weights):.4f}")
+        print(f"Weighted bias -- TVP:             {np.average(wsub['bias_tvp'], weights=weights):.4f}")
+        print(f"Production-weighted share where TVP beats static: "
+              f"{np.average(wsub['tvp_beats_static'], weights=weights):.1%}")
+
+        # --- per-Item weighted breakdown: avoids pooling raw tonnage across
+        # heterogeneous commodities; weight is only ever compared within the
+        # same Item, so a bulky commodity can't distort another's comparison ---
+        def weighted_item_stats(g):
+            wt = g["test_avg_production"].values
+            if wt.sum() <= 0:
+                return pd.Series({
+                    "n_series": len(g), "total_production_weight": 0.0,
+                    "weighted_mae_static": np.nan, "weighted_mae_tvp": np.nan,
+                    "weighted_tvp_win_share": np.nan,
+                })
+            return pd.Series({
+                "n_series": len(g),
+                "total_production_weight": wt.sum(),
+                "weighted_mae_static": np.average(g["mae_static"], weights=wt),
+                "weighted_mae_tvp": np.average(g["mae_tvp"], weights=wt),
+                "weighted_tvp_win_share": np.average(g["tvp_beats_static"], weights=wt),
+            })
+
+        by_item = wsub.groupby("Item").apply(weighted_item_stats, include_groups=False)
+        by_item = by_item.sort_values("total_production_weight", ascending=False)
+        OUT_BY_ITEM_PATH.parent.mkdir(parents=True, exist_ok=True)
+        by_item.to_csv(OUT_BY_ITEM_PATH)
+        print(f"\nPer-item weighted breakdown (top 10 by total production weight):")
+        print(by_item.head(10).to_string())
+        print(f"\nFull per-item breakdown written to {OUT_BY_ITEM_PATH}")
+
+print(f"\nWritten to {OUT_PATH}")

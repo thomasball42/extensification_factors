@@ -18,19 +18,21 @@ every year.
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from _kalman_functions import kalman_filter, rts_smoother, fit_tvp_beta, build_annual_diffs
+from _functions import kalman_filter, rts_smoother, fit_tvp_beta, build_annual_diffs, load_aggregate_matcher
 
 DATA_PATH: Path = Path("data") / "inputs" # this needs the full production dataset from FAO
 OUT_PATH: Path = Path("data", "outputs", "beta_crops.csv")
 
 MIN_OBS: int = 15  # minimum number of valid (non-missing) yearly diff pairs required to fit
 
+is_aggregate = load_aggregate_matcher()
+
 elements = ["Area harvested", "Production", "Yield"]
 columns = ["Area", "Area Code", "Item", "Item Code", "Element", "Year", "Value", "Unit"]
 
 
 # ---------------------------------------------------------------------------
-# Main pipeline
+# Main
 # ---------------------------------------------------------------------------
 
 df = pd.read_csv(
@@ -83,6 +85,7 @@ for i, ((area, area_code, item, item_code), g) in enumerate(groups):
         "Area Code": area_code,
         "Item": item,
         "Item Code": item_code,
+        "is_aggregate": is_aggregate(item),
         "current_year": int(years[-1]),
         f"current_area_harvested_{ha_unit}": g["Area harvested"].values[-1],
         f"current_production_{prod_unit}": g["Production"].values[-1],

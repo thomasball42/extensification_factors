@@ -1,5 +1,7 @@
+import json
 import numpy as np
-import pandas as pd 
+import pandas as pd
+from pathlib import Path
 from scipy.optimize import minimize
 
 # ---------------------------------------------------------------------------
@@ -189,3 +191,30 @@ def build_annual_diffs(years, log_AH, log_P):
     p_t[~valid] = np.nan
 
     return diff_years, a_t, p_t
+
+
+# ---------------------------------------------------------------------------
+# FAOSTAT aggregate-item flagging
+# ---------------------------------------------------------------------------
+
+CONFIG_PATH = Path(__file__).parent / "config.json"
+
+
+def load_aggregate_matcher(config_path: Path = CONFIG_PATH):
+    """Returns an is_aggregate(item_name) -> bool function built from the
+    "faostat_aggregates" section of config.json: an exact-match set of known
+    aggregate names plus a set of case-insensitive substring patterns."""
+    with open(config_path) as f:
+        config = json.load(f)
+
+    agg_cfg = config.get("faostat_aggregates", {})
+    known_names = set(agg_cfg.get("known_names", []))
+    name_patterns = [p.lower() for p in agg_cfg.get("name_patterns", [])]
+
+    def is_aggregate(item_name: str) -> bool:
+        if item_name in known_names:
+            return True
+        item_lower = item_name.lower()
+        return any(pattern in item_lower for pattern in name_patterns)
+
+    return is_aggregate
