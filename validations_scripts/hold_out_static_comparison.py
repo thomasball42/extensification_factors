@@ -28,18 +28,21 @@ from pathlib import Path
 from scipy.optimize import minimize
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from _functions import kalman_filter_diag, build_raw_diffs
+from _functions import kalman_filter_diag, build_raw_diffs, load_aggregate_matcher
 
 DATA_PATH: Path = Path("data") / "inputs"
 
-MIN_TRAIN_OBS = 30
-HOLDOUT_YEARS = 7
+MIN_TRAIN_OBS = 10
+HOLDOUT_YEARS = 10
 SAMPLE_N = None       # None
 RANDOM_SEED = 0
-PRODUCTION_WEIGHTING = True
+PRODUCTION_WEIGHTING = False
+
+is_aggregate = load_aggregate_matcher()
 
 OUT_PATH: Path = Path("outputs") / "validation" / f"holdout_static_comparison{"_pweighted" if PRODUCTION_WEIGHTING else ""}.csv"
 OUT_BY_ITEM_PATH: Path = Path("outputs") / "validation" / f"holdout_static_comparison_by_item{"_pweighted" if PRODUCTION_WEIGHTING else ""}.csv"
+OUT_AGGREGATES_PATH: Path = Path("outputs") / "validation" / f"holdout_static_comparison_aggregates{"_pweighted" if PRODUCTION_WEIGHTING else ""}.csv"
 
 elements = ["Area harvested", "Production", "Yield"]
 columns = ["Area", "Item", "Item Code", "Element", "Year", "Value", "Unit"]
@@ -157,11 +160,25 @@ for i, ((area, item, item_code), g) in enumerate(groups):
     out = compare_on_series(a_raw, p_raw, prod_level, train_end)
     if out is None:
         continue
-    out.update({"Area": area, "Item": item, "Item Code": item_code})
+    out.update({"Area": area, "Item": item, "Item Code": item_code, "is_aggregate": is_aggregate(item)})
     results.append(out)
 
-res_df = pd.DataFrame(results)
+all_res_df = pd.DataFrame(results)
 OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+# FAOSTAT aggregate items (e.g. "Cereals, primary") double-count their
+# component crops (e.g. "Wheat", "Maize"), so they are excluded from the
+# summary stats and production weighting below -- including them would
+# double-count both the series in unweighted averages and the tonnage in
+# production-weighted ones. They're written to their own file for reference.
+agg_df = all_res_df[all_res_df["is_aggregate"]]
+res_df = all_res_df[~all_res_df["is_aggregate"]].reset_index(drop=True)
+
+if len(agg_df) > 0:
+    agg_df.to_csv(OUT_AGGREGATES_PATH, index=False)
+    print(f"Excluded {len(agg_df)} aggregate-item series from calculations "
+          f"(written to {OUT_AGGREGATES_PATH}).")
+
 res_df.to_csv(OUT_PATH, index=False)
 
 print(f"\nCompared {len(res_df)} series (held-out prediction, {HOLDOUT_YEARS} test years each).")
@@ -169,6 +186,19 @@ print(f"--- Unweighted (every series counts equally, regardless of size) ---")
 print(f"Aggregate MAE -- static baseline: {res_df['mae_static'].mean():.4f}")
 print(f"Aggregate MAE -- TVP:             {res_df['mae_tvp'].mean():.4f}")
 print(f"Share of series where TVP beats static baseline: {res_df['tvp_beats_static'].mean():.1%}")
+
+win = res_df[res_df["tvp_beats_static"]]
+lose = res_df[~res_df["tvp_beats_static"]]
+if len(win) > 0:
+    abs_imp = win["mae_static"] - win["mae_tvp"]
+    rel_imp = abs_imp / win["mae_static"]
+    print(f"Among TVP winners ({len(win)} series): mean/median MAE reduction "
+          f"{abs_imp.mean():.4f}/{abs_imp.median():.4f} ({rel_imp.mean():.1%}/{rel_imp.median():.1%} relative)")
+if len(lose) > 0:
+    abs_worse = lose["mae_tvp"] - lose["mae_static"]
+    rel_worse = abs_worse / lose["mae_static"]
+    print(f"Among TVP losers ({len(lose)} series):  mean/median MAE increase  "
+          f"{abs_worse.mean():.4f}/{abs_worse.median():.4f} ({rel_worse.mean():.1%}/{rel_worse.median():.1%} relative)")
 
 if PRODUCTION_WEIGHTING:
     w = res_df["test_avg_production"].values
@@ -187,6 +217,15 @@ if PRODUCTION_WEIGHTING:
         print(f"Weighted bias -- TVP:             {np.average(wsub['bias_tvp'], weights=weights):.4f}")
         print(f"Production-weighted share where TVP beats static: "
               f"{np.average(wsub['tvp_beats_static'], weights=weights):.1%}")
+
+        wwin = wsub[wsub["tvp_beats_static"]]
+        if len(wwin) > 0:
+            wwin_weights = wwin["test_avg_production"].values
+            wabs_imp = wwin["mae_static"] - wwin["mae_tvp"]
+            wrel_imp = wabs_imp / wwin["mae_static"]
+            print(f"Among TVP winners, production-weighted ({len(wwin)} series): "
+                  f"mean MAE reduction {np.average(wabs_imp, weights=wwin_weights):.4f} "
+                  f"({np.average(wrel_imp, weights=wwin_weights):.1%} relative)")
 
         # --- per-Item weighted breakdown: avoids pooling raw tonnage across
         # heterogeneous commodities; weight is only ever compared within the
