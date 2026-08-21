@@ -74,11 +74,38 @@ def rts_smoother(beta_filt, P_filt, Q):
     return beta_smooth, P_smooth
 
 
-def fit_tvp_beta(a, p, P0=1e6, min_obs=15):
+def q_shrinkage_penalty(Q, var_a, q_prior_scale, q_prior_strength=1.0):
+    """MAP penalty pulling log(Q) toward log(q_prior_scale * var_a).
+
+    Returns 0.0 (no-op) when q_prior_scale is None -- this is the sole
+    opt-in gate, so callers can pass it unconditionally without their own
+    branch and the unregularized MLE is reproduced exactly by default.
+
+    CAUTION: q_prior_strength is the standard deviation of log(Q) under
+    the prior, not a "strength" multiplier -- SMALLER q_prior_strength
+    means a tighter prior (more shrinkage), LARGER means weaker.
+
+    var_a must be the variance of the exact data window the enclosing
+    log-likelihood is computed over (e.g. the full series in
+    fit_tvp_beta, or the training-only slice in a train/test holdout
+    fit) -- that's what keeps the prior calibrated to the current fit's
+    scale.
+    """
+    if q_prior_scale is None:
+        return 0.0
+    prior_mean_log_q = np.log(q_prior_scale * var_a)
+    return (np.log(Q) - prior_mean_log_q) ** 2 / (2 * q_prior_strength ** 2)
+
+
+def fit_tvp_beta(a, p, P0=1e6, min_obs=15, q_prior_scale=None, q_prior_strength=1.0):
     """
     Fit Q, R by MLE, then return smoothed beta_t and its SE for every t.
     a, p: 1-D arrays of equal length, calendar-year-aligned, NaN for gaps.
     Returns None if there aren't enough valid points to identify the model.
+
+    q_prior_scale, q_prior_strength: optional shrinkage prior on Q (see
+    q_shrinkage_penalty). q_prior_scale=None (default) reproduces the
+    exact unregularized MLE used previously -- fully backward compatible.
     """
     a = np.asarray(a, dtype=float)
     p = np.asarray(p, dtype=float)
@@ -96,7 +123,7 @@ def fit_tvp_beta(a, p, P0=1e6, min_obs=15):
         _, _, _, _, ll = kalman_filter(a, p, Q, R, P0=P0)
         if not np.isfinite(ll):
             return 1e10
-        return -ll
+        return -ll + q_shrinkage_penalty(Q, var_a, q_prior_scale, q_prior_strength)
 
     x0 = np.log([0.05 * var_a, var_a])
     res = minimize(
