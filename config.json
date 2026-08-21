@@ -1,4 +1,8 @@
 {
+  "q_prior": {
+    "q_prior_scale": 0.00001,
+    "q_prior_strength": 0.5
+  },
   "raw_animal_products": {
     "1062": {"name": "Hen eggs in shell, fresh", "grazing": false},
     "867": {"name": "Meat of cattle with the bone, fresh or chilled", "grazing": true},

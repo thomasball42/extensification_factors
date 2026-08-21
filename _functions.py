@@ -227,6 +227,16 @@ def build_annual_diffs(years, log_AH, log_P):
 CONFIG_PATH = Path(__file__).parent / "config.json"
 
 
+def load_q_prior_config(config_path: Path = CONFIG_PATH):
+    """Returns (q_prior_scale, q_prior_strength) from the "q_prior" section of
+    config.json, for use as fit_tvp_beta's shrinkage-prior kwargs."""
+    with open(config_path) as f:
+        config = json.load(f)
+
+    q_prior_cfg = config.get("q_prior", {})
+    return q_prior_cfg.get("q_prior_scale"), q_prior_cfg.get("q_prior_strength", 1.0)
+
+
 def load_aggregate_matcher(config_path: Path = CONFIG_PATH):
     """Returns an is_aggregate(item_name) -> bool function built from the
     "faostat_aggregates" section of config.json: an exact-match set of known
