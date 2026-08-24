@@ -1,8 +1,20 @@
 {
   "q_prior": {
-    "q_prior_scale": 0.00001,
-    "q_prior_strength": 0.5
+    "q_prior_scale": 0.02,
+    "q_prior_strength": 0.7
   },
+
+  "faostat_aggregates": {
+  "known_names": [
+    "Cereals, primary", "Coarse Grain, primary", "Pulses, Total",
+    "Fruit Primary", "Citrus Fruit, Total", "Treenuts, Total",
+    "Vegetables Primary", "Oilcrops, Oil Equivalent", "Oilcrops, Cake Equivalent",
+    "Roots and Tubers, Total", "Sugar Crops Primary", "Fibre Crops, Fibre Equivalent",
+    "Vegetables, leguminous", "Jute & Jute-like Fibres"
+  ],
+  "name_patterns": ["primary", "total", "equivalent"]
+  },
+
   "raw_animal_products": {
     "1062": {"name": "Hen eggs in shell, fresh", "grazing": false},
     "867": {"name": "Meat of cattle with the bone, fresh or chilled", "grazing": true},
@@ -21,6 +33,7 @@
     "1069": {"name": "Meat of ducks, fresh or chilled", "grazing": false},
     "1073": {"name": "Meat of geese, fresh or chilled", "grazing": false}
   },
+
   "land_use_codes": {
     "6600": {"name": "Country area", "grazing": false},
     "6601": {"name": "Land area", "grazing": false},
@@ -67,15 +80,5 @@
     "6771": {"name": "Inland waters used for capture fisheries", "grazing": false},
     "6773": {"name": "Coastal waters", "grazing": false},
     "6774": {"name": "Cropland area under protective cover", "grazing": false}
-  },
-  "faostat_aggregates": {
-    "known_names": [
-      "Cereals, primary", "Coarse Grain, primary", "Pulses, Total",
-      "Fruit Primary", "Citrus Fruit, Total", "Treenuts, Total",
-      "Vegetables Primary", "Oilcrops, Oil Equivalent", "Oilcrops, Cake Equivalent",
-      "Roots and Tubers, Total", "Sugar Crops Primary", "Fibre Crops, Fibre Equivalent",
-      "Vegetables, leguminous", "Jute & Jute-like Fibres"
-    ],
-    "name_patterns": ["primary", "total", "equivalent"]
   }
 }

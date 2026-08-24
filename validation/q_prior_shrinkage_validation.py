@@ -30,15 +30,17 @@ RANDOM_SEED = 0
 OUT_DIR: Path = Path("outputs") / "validation" / "q_prior_shrinkage"
 
 CANDIDATES = [
-    {"label": "weak", "q_prior_scale": 0.01, "q_prior_strength": 1.0},
-    {"label": "medium", "q_prior_scale": 0.001, "q_prior_strength": 1.0},
+    # {"label": "weak", "q_prior_scale": 0.01, "q_prior_strength": 1.0},
     {"label": "baseline",         "q_prior_scale": None,    "q_prior_strength": 1.0},
-    {"label": "strong",           "q_prior_scale": 0.001,   "q_prior_strength": 0.5},    # previous best, kept as anchor
-    {"label": "strength_0.25",    "q_prior_scale": 0.001,   "q_prior_strength": 0.25},
-    {"label": "strength_0.1",     "q_prior_scale": 0.001,   "q_prior_strength": 0.1},
-    {"label": "scale_1e-4",       "q_prior_scale": 0.0001,  "q_prior_strength": 0.5},
-    {"label": "scale_1e-5",       "q_prior_scale": 0.00001, "q_prior_strength": 0.5},
-    {"label": "scale_1e-4_tight", "q_prior_scale": 0.0001,  "q_prior_strength": 0.25},
+    {"label": "str_0.9", "q_prior_scale": 0.02, "q_prior_strength": 0.9},
+    {"label": "str_0.8", "q_prior_scale": 0.02, "q_prior_strength": 0.8},
+    {"label": "str_0.7", "q_prior_scale": 0.02, "q_prior_strength": 0.7},
+    # {"label": "strong",           "q_prior_scale": 0.001,   "q_prior_strength": 0.5},    # previous best, kept as anchor
+    # {"label": "strength_0.25",    "q_prior_scale": 0.001,   "q_prior_strength": 0.25},
+    # {"label": "strength_0.1",     "q_prior_scale": 0.001,   "q_prior_strength": 0.1},
+    # {"label": "scale_1e-4",       "q_prior_scale": 0.0001,  "q_prior_strength": 0.5},
+    # {"label": "scale_1e-5",       "q_prior_scale": 0.00001, "q_prior_strength": 0.5},
+    # {"label": "scale_1e-4_tight", "q_prior_scale": 0.0001,  "q_prior_strength": 0.25},
 ]
 
 
