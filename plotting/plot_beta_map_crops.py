@@ -32,8 +32,8 @@ dat_path = Path("outputs") / "beta_crops.csv"
 figs_path = Path("..") / "figs" / "beta_map_crops"
 SAVE = True
 
-norm_min_max = (None, None)
-ZERO_FRAC = 0.1  # fraction of the colorbar's height where 0 sits
+norm_min_max = (0.0, 1.0)
+ZERO_FRAC = 0.0  # fraction of the colorbar's height where 0 sits
 N_WINDOWS = 2
 START_YEAR = None  # e.g. 2000; None = start of available data
 END_YEAR = None  # e.g. 2023; None = end of available data
@@ -42,22 +42,25 @@ CMAP_DIFF = "RdBu_r"  # red = beta rose between historical windows, blue = beta 
 
 # crop filtering (kept in sync with beta_timeseries_crops.py / beta_linear_crops.py)
 ifilt = [
-        # "rice",
+        "rice",
         "wheat",
-        # "maize",
+        "maize",
         # "sorghum",
         # "soy",
+        "potato",
+        "sugar cane",
         # "barley",
         # "Cereal"
         ]
 
 iexcl = [
-        "buckwheat", "green corn", "n.e.c."
+        "buckwheat", "green corn", "n.e.c.", "sweet potato"
          ]
 
 
 figsize = (8, 6)
 os.makedirs(figs_path, exist_ok=True)
+
 
 class ZeroFractionNorm(Normalize):
     """Diverging norm like TwoSlopeNorm, but 0 sits at an arbitrary

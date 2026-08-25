@@ -1,7 +1,7 @@
 {
   "q_prior": {
     "q_prior_scale": 0.02,
-    "q_prior_strength": 0.7
+    "q_prior_strength": 0.9
   },
 
   "faostat_aggregates": {

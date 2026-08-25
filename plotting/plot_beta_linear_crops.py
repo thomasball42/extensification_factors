@@ -27,7 +27,7 @@ SAVE = True
 # filtering (kept in sync with beta_timeseries_crops.py)
 ifilt = [
         # "rice",
-        # "wheat",
+        "wheat",
         # "maize",
         # "sorghum",
         # "soy",
@@ -40,21 +40,24 @@ iexcl = [
          ]
 
 afilt = [
-        # "United Kingdom", "France", "Brazil", "China", "India", "United States"
+        "United Kingdom of Great Britain and Northern Ireland", 
+        "France", 
+        # "Brazil", "China", "India", "United States"
         # "World",
         # "United Kingdom",
         # "Brazil",
         # "Argentina",
         # "India",
-        # "China, mainland",
-        "Europe",
-        "Africa",
-        # "Latin America"
-        "South America",
-        "Northern America",
-        "Eastern Asia",
-        "Southern Asia",
+        "China, mainland",
+        # "Europe",
+        # "Africa",
+        # # "Latin America"
+        # "South America",
+        # "Northern America",
+        # "Eastern Asia",
+        # "Southern Asia",
         # "United States of America",
+        "Japan"
         ]
 
 aexcl = [

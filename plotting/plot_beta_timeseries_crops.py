@@ -14,44 +14,39 @@ SAVE = True
 
 # filtering
 ifilt = [
-        # "rice", 
-        "wheat", 
+        # "rice",
+        "wheat",
         # "maize",
-        # "sorghum",
-        # "soy",
+        # # "sorghum",
+        # # "soy",
+        # "potato",
+        # "sugar cane",
         # "barley",
         # "Cereal"
-        # "coffee",
-        # "cocoa"
         ]
 
 iexcl = [
-        "buckwheat", "green corn", "n.e.c."
+        "buckwheat", "green corn", "n.e.c.", "sweet potato"
          ]
 
 afilt = [
         # "United Kingdom", "France", "Brazil", "China", "India", "United States"
-        # "World",
-        "United Kingdom",
-        "Brazil",
-        "Argentina",
-        "India",
-        # "China, mainland",
+        "China, mainland", "India", "Russia", "United States of America", "Australia", "France", "Canada", "Germany",
         # "Europe",
         # "Africa",
-        # "Latin America"
+        # "Latin America",
         # "South America",
         # "Northern America",
         # "Eastern Asia",
         # "Southern Asia",
         # "United States of America",
-        "Colombia",
-        "Brazil",
-        "Kenya", 
-        "Vietnam",
-        "Costa Rica",
-        "Bolivia",
-        "Mexico"
+        # "Colombia",
+        # "Brazil",
+        # "Kenya", 
+        # "Vietnam",
+        # "Costa Rica",
+        # "Bolivia",
+        # "Mexico"
         ]
  
 aexcl = [
@@ -64,7 +59,9 @@ aexcl = [
         "union",
         "middle",
         "South Africa",
-        "central"
+        "central",
+        "Ethiopia PDR",
+        "New Zealand",
         ]
 
 # main

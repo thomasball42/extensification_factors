@@ -1,20 +1,21 @@
 """
 Distribution of the current (most recent year) extensification parameter
-beta across countries, grouped by continent -- the cross-sectional
-complement to beta_map_crops.py's time-windowed maps.
+beta across countries, grouped by continent -- box-and-whisker variant of
+plot_beta_distribution_by_region_crops.py (same data prep, each scatter
+"blob" there becomes a box here).
 
-One point (+/- SE) per country: FAOSTAT aggregate items are excluded and
-each country's items are combined via a production-weighted mean/SE (see
-_geo.weighted_mean_se), using each item's own most recent (current_year)
-beta/se rather than a fixed calendar year, since not every item's series
-necessarily runs through the same last year.
+One point per country: FAOSTAT aggregate items are excluded and, when
+take_mean is True, each country's items are combined via a
+production-weighted mean/SE (see _geo.weighted_mean_se), using each item's
+own most recent (current_year) beta rather than a fixed calendar year, since
+not every item's series necessarily runs through the same last year.
 """
 
 import os
 import sys
 from pathlib import Path
 
-import matplotlib.colors as mcolors
+import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -28,9 +29,10 @@ dat_path = Path("outputs") / "beta_crops.csv"
 figs_path = Path("..") / "figs" / "beta_distribution_by_region_crops"
 SAVE = True
 
-
+# True: production-weighted mean across the selected crops, one box per
+# continent (as before). False: no aggregation across crops -- each selected
+# crop gets its own box, colour-coded by crop, within each continent's slot.
 take_mean = False
-
 
 ifilt = [
         "rice",
@@ -123,57 +125,60 @@ continents = (
 continent_color = {c: col for c, col in zip(continents, BASE_PALETTE)}
 continent_n = country_stats.groupby("CONTINENT")["NAME"].nunique()
 
-rng = np.random.default_rng(0)
 x_of_continent = {c: i for i, c in enumerate(continents)}
-base_x = country_stats["CONTINENT"].map(x_of_continent).values
-
-if take_mean:
-    jitter = rng.uniform(-0.3, 0.3, size=len(country_stats))
-    x = base_x + jitter
-else:
-    # give each crop its own sub-band within the continent's slot so same-crop
-    # points cluster together instead of all crops blobbing into one scatter
-    n_items = len(items)
-    band_width = 0.6 / n_items
-    crop_idx = country_stats["Item"].map({crop: i for i, crop in enumerate(items)}).values
-    band_center = -0.3 + (crop_idx + 0.5) * band_width
-    within_jitter = rng.uniform(-0.4 * band_width, 0.4 * band_width, size=len(country_stats))
-    x = base_x + band_center + within_jitter
 
 fig, ax = plt.subplots(figsize=(max(8, 1.8 * len(continents) + 2), 7))
 
 for _ in [0, 1]:
     ax.axhline(y=_, color="k", linestyle="--", linewidth=0.5, alpha=0.5)
 
+
+def _draw_box(values, position, width, color):
+    bp = ax.boxplot(
+        values, positions=[position], widths=width, patch_artist=True,
+        showfliers=True, whis=1.5,
+        flierprops=dict(marker="o", markersize=3, markerfacecolor=color,
+                         markeredgecolor="none", alpha=0.6),
+        medianprops=dict(color="black", linewidth=1.5),
+        boxprops=dict(facecolor=color, edgecolor="black", alpha=0.75, linewidth=1),
+        whiskerprops=dict(color="black", linewidth=1),
+        capprops=dict(color="black", linewidth=1),
+    )
+    return bp
+
+
 if take_mean:
     for c in continents:
         mask = country_stats["CONTINENT"].values == c
-        ax.errorbar(
-            x[mask], country_stats.loc[mask, "beta"], yerr=country_stats.loc[mask, "se"],
-            fmt="o", markersize=5, capsize=2.5, linewidth=1, alpha=0.75,
-            color=continent_color[c], label=c,
-        )
-else:
-    # colour by crop instead of continent; x position is still grouped by
-    # continent, so points from different crops interleave within each group
-    crop_color = {crop: col for crop, col in zip(items, BASE_PALETTE)}
-    for crop in items:
-        mask = country_stats["Item"].values == crop
-        if not mask.any():
+        values = country_stats.loc[mask, "beta"].dropna().values
+        if len(values) == 0:
             continue
-        ax.errorbar(
-            x[mask], country_stats.loc[mask, "beta"], yerr=country_stats.loc[mask, "se"],
-            fmt="o", markersize=5, capsize=2.5, linewidth=1, alpha=0.75,
-            color=crop_color[crop], label=crop,
-        )
+        _draw_box(values, x_of_continent[c], width=0.5, color=continent_color[c])
+else:
+    # colour by crop instead of continent; each crop gets its own sub-band
+    # within the continent's slot, so same-crop boxes line up across regions
+    n_items = len(items)
+    band_width = 0.6 / n_items
+    crop_color = {crop: col for crop, col in zip(items, BASE_PALETTE)}
+    for c in continents:
+        for i, crop in enumerate(items):
+            mask = (country_stats["CONTINENT"].values == c) & (country_stats["Item"].values == crop)
+            values = country_stats.loc[mask, "beta"].dropna().values
+            if len(values) == 0:
+                continue
+            band_center = -0.3 + (i + 0.5) * band_width
+            _draw_box(values, x_of_continent[c] + band_center, width=band_width * 0.8, color=crop_color[crop])
+
+    legend_handles = [mpatches.Patch(facecolor=crop_color[crop], edgecolor="black", alpha=0.75, label=crop)
+                       for crop in items]
+    ax.legend(handles=legend_handles, loc="best", fontsize=8, framealpha=0.9)
 
 ax.set_xticks(range(len(continents)))
 ax.set_xticklabels([f"{c}\n(n={continent_n[c]})" for c in continents])
 ax.set_xlim(-0.6, len(continents) - 0.4)
 
-# y-limits from the point estimates only (not the SEs) so a handful of very
-# uncertain series don't compress the rest of the plot into a thin band --
-# their error bars are left to extend past the visible range
+# y-limits from the point estimates only so a handful of very uncertain
+# series don't compress the rest of the plot into a thin band
 lo, hi = np.nanpercentile(country_stats["beta"], [1, 99])
 pad = 0.15 * (hi - lo)
 ax.set_ylim(lo - pad, hi + pad)
@@ -183,14 +188,12 @@ if take_mean:
                   r"(production-weighted across crops)")
 else:
     ax.set_ylabel(r"Extensification parameter $\beta$")
-    ax.legend(loc="best", fontsize=8, framealpha=0.9)
-# ax.set_title("Distribution of country-level crop extensification betas, by continent\n"
-#               "(a few very uncertain series have SE bars extending past the plotted range)")
+# ax.set_title("Distribution of country-level crop extensification betas, by continent")
 
 fig.tight_layout()
 
 if SAVE:
     suffix = "" if take_mean else "_by_crop"
-    fig.savefig(figs_path / f"beta_distribution_by_region_crops{suffix}.png", dpi=300, bbox_inches="tight")
+    fig.savefig(figs_path / f"beta_boxplot_by_region_crops{suffix}.png", dpi=300, bbox_inches="tight")
 
 plt.show()
