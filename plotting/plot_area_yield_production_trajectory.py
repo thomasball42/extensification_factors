@@ -21,7 +21,7 @@ from pathlib import Path
 import os
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from _functions import filter_list as _filter_list
+from _utils import filter_list as _filter_list
 
 DATA_PATH = Path("data") / "inputs"
 figs_path = Path("..") / "figs" / "area_yield_production_trajectory"

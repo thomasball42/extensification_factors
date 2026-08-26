@@ -5,3 +5,5 @@ pathlib
 openpyxl
 scipy
 geopandas
+requests
+linearmodels

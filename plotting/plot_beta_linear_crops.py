@@ -18,7 +18,7 @@ from pathlib import Path
 import os
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from _functions import filter_list as _filter_list
+from _utils import filter_list as _filter_list
 
 dat_path = Path("outputs") / "beta_crops_linear.csv"
 figs_path = Path("..") / "figs" / "beta_linear_crops"

@@ -6,7 +6,7 @@ import os
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from _functions import filter_list as _filter_list
+from _utils import filter_list as _filter_list
 
 dat_path = Path("outputs") / "beta_crops.csv"
 figs_path = Path("..") / "figs" / "beta_timeseries_crops"
@@ -30,23 +30,23 @@ iexcl = [
          ]
 
 afilt = [
-        # "United Kingdom", "France", "Brazil", "China", "India", "United States"
-        "China, mainland", "India", "Russia", "United States of America", "Australia", "France", "Canada", "Germany",
+        "United Kingdom of Great Britain and Northern Ireland", 
+        "France", 
+        # "Brazil", "China", "India", "United States"
+        # "World",
+        # "United Kingdom",
+        # "Brazil",
+        # "Argentina",
+        "India",
+        "China, mainland",
         # "Europe",
         # "Africa",
-        # "Latin America",
+        # # "Latin America"
         # "South America",
         # "Northern America",
         # "Eastern Asia",
         # "Southern Asia",
         # "United States of America",
-        # "Colombia",
-        # "Brazil",
-        # "Kenya", 
-        # "Vietnam",
-        # "Costa Rica",
-        # "Bolivia",
-        # "Mexico"
         ]
  
 aexcl = [

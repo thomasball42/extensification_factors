@@ -15,7 +15,8 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 from scipy.stats import linregress
-from _functions import build_annual_diffs, load_aggregate_matcher
+from _stats import build_annual_diffs
+from _utils import load_aggregate_matcher
 
 DATA_PATH: Path = Path("data") / "inputs"
 OUT_PATH: Path = Path("outputs", "beta_crops_linear.csv")

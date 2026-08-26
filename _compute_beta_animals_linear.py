@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 from scipy.stats import linregress
-from _functions import build_annual_diffs
+from _stats import build_annual_diffs
 
 DATA_PATH: Path = Path("data") / "inputs" # this needs the full production dataset from FAO
 OUT_PATH: Path = Path("outputs", "beta_animals_linear.csv")

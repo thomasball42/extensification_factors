@@ -23,7 +23,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from _geo import load_country_codes, load_world, weighted_mean_se
-from _functions import filter_list as _filter_list
+from _utils import filter_list as _filter_list
 
 dat_path = Path("outputs") / "beta_crops.csv"
 figs_path = Path("..") / "figs" / "beta_distribution_by_region_crops"

@@ -3,7 +3,10 @@ import json
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from _functions import kalman_filter, rts_smoother, fit_tvp_beta, build_annual_diffs, load_q_prior_config
+from _stats import (
+    fit_tvp_beta, build_raw_diffs, build_annual_diffs, residualize_two_way_fe,
+)
+from _utils import load_q_prior_config
 
 DATA_PATH: Path = Path("data") / "inputs" # this needs the full production dataset from FAO
 OUT_PATH: Path = Path("outputs", "beta_animals.csv")
@@ -13,8 +16,10 @@ with open(CONFIG_PATH) as f:
     _config = json.load(f)
 
 MIN_OBS: int = 15  # minimum number of valid (non-missing) yearly diff pairs required to fit
+USE_Q_PRIOR: bool = True  # shrinkage prior on Q (see _stats.q_shrinkage_penalty); False = unregularized MLE
+USE_RESIDUALIZATION: bool = True  # two-way (country + year) FE residualization; False = plain demeaning (build_annual_diffs)
 
-Q_PRIOR_SCALE, Q_PRIOR_STRENGTH = load_q_prior_config(CONFIG_PATH)
+Q_PRIOR_SCALE, Q_PRIOR_STRENGTH = load_q_prior_config(CONFIG_PATH) if USE_Q_PRIOR else (None, 1.0)
 
 elements = ["Production"]
 columns = ["Area", "Area Code", "Item", "Item Code", "Element", "Year", "Value", "Unit"]
@@ -60,11 +65,13 @@ wide = df.pivot_table(
 # sum production across all pasture-based commodities per area/year (NaN only if all commodities are NaN)
 wide = wide.groupby(["Area", "Area Code", "Year"], as_index=False)["Production"].sum(min_count=1)
 
-records = []
+pasture_year_cols = [c for c in land_use_df.columns
+                      if c not in ["Area", "Area Code", "Item", "Item Code", "Element", "Unit"]]
+pasture_years = np.array([int(c[1:]) for c in pasture_year_cols])
+
+area_data = {}
 groups = wide.groupby(["Area", "Area Code"])
 for i, ((area, area_code), g) in enumerate(groups):
-
-    print(i + 1, "/", len(groups), area)
 
     g = g.sort_values("Year").dropna(subset=elements)
     if len(g) < MIN_OBS + 1:
@@ -72,8 +79,6 @@ for i, ((area, area_code), g) in enumerate(groups):
 
     years = g["Year"].values.astype(int)
 
-    pasture_year_cols = [c for c in land_use_df.columns
-                          if c not in ["Area", "Area Code", "Item", "Item Code", "Element", "Unit"]]
     area_pasture_wide = land_use_df.loc[land_use_df["Area Code"] == area_code, pasture_year_cols]
 
     pasture_values = area_pasture_wide.values
@@ -82,20 +87,55 @@ for i, ((area, area_code), g) in enumerate(groups):
     pasture_sum = np.nansum(pasture_values, axis=0)  # sum across all grazing land types
     pasture_sum[all_nan] = np.nan
 
-    pasture_years = np.array([int(c[1:]) for c in pasture_year_cols])
     # align pasture years onto the production years (NaN where a production year has no land-use value)
     area_pasture = pd.Series(pasture_sum, index=pasture_years).reindex(years).values
 
-    with np.errstate(divide="ignore"):
-        log_pasture_ha = np.log(area_pasture)
-        log_P = np.log(g["Production"].values)
+    area_data[area_code] = {"area": area, "g": g, "area_pasture": area_pasture}
 
-    diff_years, a_t, p_t = build_annual_diffs(years, log_pasture_ha, log_P)
+print(f"{len(area_data)} areas")
+
+if USE_RESIDUALIZATION:
+    print("fitting two-way fixed effects")
+    panel_rows = []
+    for area_code, meta in area_data.items():
+        g, area_pasture = meta["g"], meta["area_pasture"]
+        years = g["Year"].values.astype(int)
+        with np.errstate(divide="ignore"):
+            log_pasture_ha = np.log(area_pasture)
+            log_P = np.log(g["Production"].values)
+        diff_years, a_t, p_t = build_raw_diffs(years, log_pasture_ha, log_P)
+        panel_rows.append(pd.DataFrame({
+            "entity": area_code, "time": diff_years, "a": a_t, "p": p_t,
+        }))
+
+    panel = residualize_two_way_fe(pd.concat(panel_rows, ignore_index=True))
+    diffs_by_area = {}
+    for area_code, sub in panel.groupby("entity"):
+        sub = sub.sort_values("time")
+        diffs_by_area[area_code] = (sub["time"].values.astype(int), sub["a_resid"].values, sub["p_resid"].values)
+else:
+    diffs_by_area = {}
+    for area_code, meta in area_data.items():
+        g, area_pasture = meta["g"], meta["area_pasture"]
+        years = g["Year"].values.astype(int)
+        with np.errstate(divide="ignore"):
+            log_pasture_ha = np.log(area_pasture)
+            log_P = np.log(g["Production"].values)
+        diffs_by_area[area_code] = build_annual_diffs(years, log_pasture_ha, log_P)
+
+records = []
+for i, (area_code, meta) in enumerate(area_data.items()):
+    area, g, area_pasture = meta["area"], meta["g"], meta["area_pasture"]
+
+    print(i + 1, "/", len(area_data), area)
+
+    diff_years, a_t, p_t = diffs_by_area[area_code]
 
     fit = fit_tvp_beta(a_t, p_t, min_obs=MIN_OBS, q_prior_scale=Q_PRIOR_SCALE, q_prior_strength=Q_PRIOR_STRENGTH)
     if fit is None:
         continue
 
+    years = g["Year"].values.astype(int)
     record = {
             "Area": area,
             "Area Code": area_code,
@@ -114,7 +154,7 @@ for i, ((area, area_code), g) in enumerate(groups):
     for yr, beta, se in zip(diff_years, fit["beta"], fit["se"]):
             record[f"beta_{int(yr)}"] = beta
             record[f"se_{int(yr)}"] = se
-    
+
     records.append(record)
 
 out = pd.DataFrame.from_records(records)
