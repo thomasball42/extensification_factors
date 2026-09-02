@@ -37,13 +37,13 @@ from _stats import kalman_filter_diag, q_shrinkage_penalty
 from _utils import load_aggregate_matcher
 from _holdout_common import load_wide, load_groups, build_item_area_data, residualized_target_series
 
-MIN_TRAIN_OBS = 50
+MIN_TRAIN_OBS = 30
 HOLDOUT_YEARS = 5
 SAMPLE_N = None       # None
 RANDOM_SEED = 0
 PRODUCTION_WEIGHTING = True
-Q_PRIOR_SCALE = None       # None = no shrinkage (unchanged default behaviour). Set e.g. 0.001 to enable.
-Q_PRIOR_STRENGTH = 1.0     # std of log(Q) around the prior mean -- smaller = more shrinkage.
+Q_PRIOR_SCALE = 0.02      # None = no shrinkage (unchanged default behaviour). Set e.g. 0.001 to enable.
+Q_PRIOR_STRENGTH = 0.9     # std of log(Q) around the prior mean -- smaller = more shrinkage.
 
 is_aggregate = load_aggregate_matcher()
 

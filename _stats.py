@@ -375,3 +375,47 @@ def residualize_two_way_fe_oos(panel, fit_mask, entity_col="entity", time_col="t
         panel[rc] = resid
 
     return panel
+
+
+def residualize_time_fe_oos(panel, fit_mask, time_col="time", value_cols=("a", "p")):
+    """
+    Like residualize_two_way_fe_oos, but with a time (year) fixed effect only
+    -- no entity effect. Fits mu + gamma[time] using only fit_mask==True rows,
+    then applies it to residualize every row (including fit_mask==False
+    ones). Used to isolate how much of two-way FE's effect (if any) comes
+    from absorbing year-level shocks vs. from the entity effect.
+
+    Time periods with fewer than 2 fit-eligible rows get a NaN residual for
+    that period -- otherwise a single row would be its own group mean,
+    silently forcing its residual to exactly 0 rather than leaving it as the
+    unidentified value it actually is.
+    """
+    panel = panel.reset_index(drop=True)
+    fit_mask = np.asarray(fit_mask, dtype=bool)
+
+    valid = np.isfinite(panel[list(value_cols)].to_numpy(dtype=float)).all(axis=1)
+    fit_eligible = valid & fit_mask
+
+    resid_cols = [f"{c}_resid" for c in value_cols]
+    time_vals = panel[time_col].to_numpy()
+
+    fit_time_counts = panel.loc[fit_eligible, time_col].value_counts()
+    identified_times = fit_time_counts[fit_time_counts >= 2].index
+    fit_idx = panel.index[fit_eligible & panel[time_col].isin(identified_times)]
+
+    if len(fit_idx) == 0:
+        for c in resid_cols:
+            panel[c] = np.nan
+        return panel
+
+    for col, rc in zip(value_cols, resid_cols):
+        fit_times = panel.loc[fit_idx, time_col].to_numpy()
+        fit_vals = panel.loc[fit_idx, col].to_numpy(dtype=float)
+        mu = float(fit_vals.mean())
+        gamma = pd.Series(fit_vals - mu).groupby(fit_times).mean()
+        pred = mu + gamma.reindex(time_vals).to_numpy()
+        resid = panel[col].to_numpy(dtype=float) - pred
+        resid[~valid] = np.nan
+        panel[rc] = resid
+
+    return panel

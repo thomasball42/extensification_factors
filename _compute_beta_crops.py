@@ -33,8 +33,8 @@ OUT_PATH: Path = Path("outputs", "beta_crops.csv")
 
 MIN_OBS: int = 15  # minimum number of valid (non-missing) yearly diff pairs required to fit
 USE_Q_PRIOR: bool = True  # shrinkage prior on Q (see _stats.q_shrinkage_penalty); False = unregularized MLE
-USE_RESIDUALIZATION: bool = True  # two-way (country + year) FE residualization; False = plain demeaning (build_annual_diffs)
-
+USE_RESIDUALIZATION: bool = False # two-way (country + year) FE residualization; False = plain demeaning (build_annual_diffs)
+                                  # validation steps indicate this doesn't improve things so it's turned off 
 is_aggregate = load_aggregate_matcher()
 Q_PRIOR_SCALE, Q_PRIOR_STRENGTH = load_q_prior_config() if USE_Q_PRIOR else (None, 1.0)
 

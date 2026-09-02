@@ -21,7 +21,7 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 
-from _stats import build_raw_diffs, residualize_two_way_fe_oos
+from _stats import build_raw_diffs, residualize_two_way_fe_oos, residualize_time_fe_oos
 
 DATA_PATH: Path = Path("data") / "inputs"
 elements = ["Area harvested", "Production", "Yield"]
@@ -94,3 +94,40 @@ def residualized_target_series(area, area_entry, panel, train_end):
     resid_panel = residualize_two_way_fe_oos(panel, fit_mask)
     sub = resid_panel[resid_panel["entity"] == area].sort_values("time")
     return sub["a_resid"].to_numpy(dtype=float), sub["p_resid"].to_numpy(dtype=float)
+
+
+def time_fe_target_series(area, area_entry, panel, train_end):
+    """Leak-safe counterfactual to residualized_target_series with a
+    YEAR-ONLY fixed effect -- no country (entity) effect. Excludes `area`'s
+    own held-out rows from the year-effect fit, same as
+    residualized_target_series. Used to test whether the entity effect in
+    two-way FE residualization is pulling its weight, or whether any benefit
+    of residualizing comes entirely from absorbing year-level shocks."""
+    diff_years = area_entry["diff_years"]
+    test_years = set(diff_years[train_end:].tolist())
+    fit_mask = ~((panel["entity"] == area) & (panel["time"].isin(test_years))).to_numpy()
+
+    resid_panel = residualize_time_fe_oos(panel, fit_mask)
+    sub = resid_panel[resid_panel["entity"] == area].sort_values("time")
+    return sub["a_resid"].to_numpy(dtype=float), sub["p_resid"].to_numpy(dtype=float)
+
+
+def demeaned_target_series(area, area_entry, panel, train_end):
+    """Leak-safe counterfactual to residualized_target_series: instead of
+    two-way (country+year) fixed-effects residualization, apply the main
+    pipeline's non-residualization fallback (build_annual_diffs-style plain
+    per-series demeaning), but computed from TRAIN-ONLY statistics so no
+    test-period value leaks into the demeaning constant. Returns
+    (a_demeaned, p_demeaned) aligned to area_entry["diff_years"], directly
+    comparable to residualized_target_series's output for the same series
+    and train_end -- used to test whether the fixed-effects step actually
+    earns its keep over plain demeaning."""
+    sub = panel[panel["entity"] == area].sort_values("time")
+    a = sub["a"].to_numpy(dtype=float)
+    p = sub["p"].to_numpy(dtype=float)
+    train_valid = np.isfinite(a[:train_end]) & np.isfinite(p[:train_end])
+    if train_valid.sum() == 0:
+        return np.full_like(a, np.nan), np.full_like(p, np.nan)
+    a_mean = np.nanmean(a[:train_end][train_valid])
+    p_mean = np.nanmean(p[:train_end][train_valid])
+    return a - a_mean, p - p_mean

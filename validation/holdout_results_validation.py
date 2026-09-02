@@ -38,9 +38,9 @@ from _holdout_common import load_wide, load_groups, build_item_area_data, residu
 
 OUT_PATH: Path = Path("outputs") / "validation" / "holdout_validation.csv"
 
-MIN_TRAIN_OBS = 15
-HOLDOUT_YEARS = 10
-SAMPLE_N = 5000       # None = run on every qualifying series
+MIN_TRAIN_OBS = 30
+HOLDOUT_YEARS = 5
+SAMPLE_N = None       # None = run on every qualifying series
 RANDOM_SEED = 0
 
 
