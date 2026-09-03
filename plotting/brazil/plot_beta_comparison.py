@@ -21,9 +21,9 @@ from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 
 NATIONAL_TVP_PATH = Path("outputs") / "beta_animals.csv"
-NATIONAL_LINEAR_PATH = Path("outputs") / "beta_animals_linear.csv"
-REGIONAL_TVP_PATH = Path("..") / "brazil" / "outputs" / "beta_animals_local_Brazil.csv"
-REGIONAL_LINEAR_PATH = Path("..") / "brazil" / "outputs" / "beta_animals_linear_local_Brazil.csv"
+NATIONAL_LINEAR_PATH = Path("outputs") / "linear" / "beta_animals_linear.csv"
+REGIONAL_TVP_PATH = Path("outputs") / "brazil" / "beta_animals_local_Brazil.csv"
+REGIONAL_LINEAR_PATH = Path("outputs") / "brazil" / "beta_animals_linear_local_Brazil.csv"
 FIGS_PATH = Path("..") / "figs" / "brazil"
 SAVE = True
 

@@ -20,19 +20,24 @@ from matplotlib.cm import ScalarMappable
 from matplotlib.colors import TwoSlopeNorm
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from _geo import load_country_codes, load_world, time_windows
+from _utils import load_plot_config
+
+SCRIPT_NAME = "plot_beta_map_animals"
 
 dat_path = Path("outputs") / "beta_animals.csv"
 figs_path = Path("..") / "figs" / "beta_map_animals"
 SAVE = True
 
-N_WINDOWS = 1
-START_YEAR = None  # None = start of available data
-END_YEAR = None  # None = end of available data
-CMAP = "RdBu_r"  
+_map_cfg = load_plot_config()["maps"][SCRIPT_NAME]
+N_WINDOWS = _map_cfg["N_WINDOWS"]
+START_YEAR = _map_cfg["START_YEAR"]  # None = start of available data
+END_YEAR = _map_cfg["END_YEAR"]  # None = end of available data
+CMAP = "RdBu_r"
 
 figsize = (10, 3.8 * N_WINDOWS)
-norm_min_max = (-0.1, 0.3)
+norm_min_max = tuple(_map_cfg["norm_min_max"])
 os.makedirs(figs_path, exist_ok=True)
 
 # ---------------------------------------------------------------------------

@@ -26,7 +26,9 @@ from pathlib import Path
 import os
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from _utils import filter_list as _filter_list
+from _utils import filter_list as _filter_list, load_plot_config, resolve_filter_preset
+
+SCRIPT_NAME = "plot_area_yield_decomposition"
 
 DATA_PATH = Path("data") / "inputs"
 figs_path = Path("..") /  "figs" / "area_yield_decomp"
@@ -62,51 +64,8 @@ df = df[df.Item.isin(crop_items)]
 all_items = df.Item.unique()
 all_areas = df.Area.unique()
 
-ifilt = [
-        "Wheat"
-        ]
-
-iexcl = [
-        "buckwheat",
-        "n.e.c."
-        ]
-
-# afilt = [
-#         "United States of America",
-#         ]
-
-afilt = [
-        "United Kingdom of Great Britain and Northern Ireland", 
-        "France", 
-        # "Brazil", "China", "India", "United States"
-        # "World",
-        # "United Kingdom",
-        # "Brazil",
-        # "Argentina",
-        "India",
-        "China, mainland",
-        # "Europe",
-        # "Africa",
-        # # "Latin America"
-        # "South America",
-        # "Northern America",
-        # "Eastern Asia",
-        # "Southern Asia",
-        # "United States of America",
-        ]
-
-aexcl = [
-        "taiwan",
-        "southern",
-        "northern",
-        "western",
-        "eastern",
-        "republic",
-        "union",
-        "middle",
-        "South Africa",
-        "central"
-        ]
+_plot_cfg = load_plot_config()
+ifilt, iexcl, afilt, aexcl = resolve_filter_preset(_plot_cfg, SCRIPT_NAME)
 
 
 item_matches = _filter_list(all_items, ifilt, iexcl)

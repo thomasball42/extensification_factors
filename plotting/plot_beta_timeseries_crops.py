@@ -6,63 +6,18 @@ import os
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from _utils import filter_list as _filter_list
+from _utils import filter_list as _filter_list, load_plot_config, resolve_filter_preset
+
+SCRIPT_NAME = "plot_beta_timeseries_crops"
 
 dat_path = Path("outputs") / "beta_crops.csv"
 figs_path = Path("..") / "figs" / "beta_timeseries_crops"
 SAVE = True
 
 # filtering
-ifilt = [
-        # "rice",
-        "wheat",
-        # "maize",
-        # # "sorghum",
-        # # "soy",
-        # "potato",
-        # "sugar cane",
-        # "barley",
-        # "Cereal"
-        ]
-
-iexcl = [
-        "buckwheat", "green corn", "n.e.c.", "sweet potato"
-         ]
-
-afilt = [
-        "United Kingdom of Great Britain and Northern Ireland", 
-        "France", 
-        # "Brazil", "China", "India", "United States"
-        # "World",
-        # "United Kingdom",
-        # "Brazil",
-        # "Argentina",
-        "India",
-        "China, mainland",
-        # "Europe",
-        # "Africa",
-        # # "Latin America"
-        # "South America",
-        # "Northern America",
-        # "Eastern Asia",
-        # "Southern Asia",
-        # "United States of America",
-        ]
- 
-aexcl = [
-        "taiwan",
-        "southern",
-        "northern",
-        "western", 
-        "eastern",
-        "republic",
-        "union",
-        "middle",
-        "South Africa",
-        "central",
-        "Ethiopia PDR",
-        "New Zealand",
-        ]
+_plot_cfg = load_plot_config()
+ifilt, iexcl, afilt, aexcl = resolve_filter_preset(_plot_cfg, SCRIPT_NAME)
+ACTIVE_PRESET = _plot_cfg["scripts"][SCRIPT_NAME]["active"]
 
 # main
 
@@ -213,5 +168,5 @@ fig.tight_layout()
 plt.show()
 
 if SAVE:
-    filename = f"extensification_factors_tvp{f"_{items[0]}" if len(items) == 1 else "multi"}_{'_'.join(area_labels)}.png"
+    filename = f"extensification_factors_tvp_{ACTIVE_PRESET}{f"_{items[0]}" if len(items) == 1 else "multi"}_{'_'.join(area_labels)}.png"
     fig.savefig(figs_path / filename, dpi=300, bbox_inches="tight")

@@ -6,41 +6,19 @@ import os
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from _utils import filter_list as _filter_list
+from _utils import filter_list as _filter_list, load_plot_config, resolve_filter_preset
+
+SCRIPT_NAME = "plot_beta_timeseries_animals"
 
 dat_path = Path("outputs") / "beta_animals.csv"
 figs_path = Path("..") / "figs" / "beta_timeseries_animals"
 
 
 SAVE = True
-# filtering
-afilt = [
-        # "World",
-        "United Kingdom",
-        "Brazil",
-        # "Argentina",
-        "India",
-        "China, mainland",
-
-        # "Europe",
-        # "Africa",
-        # "South America",
-        # "North America",
-        # "Asia",
-        ]
-
-aexcl = [
-        # "taiwan",
-        # "southern",
-        # "northern",
-        # "western",
-        # "eastern",
-        # "republic",
-        # "union",
-        # "middle",
-        # "South Africa",
-        # "central"
-        ]
+# filtering (only afilt/aexcl apply -- beta_animals.csv has a single pooled
+# Item, so any ifilt/iexcl in the active preset is ignored here)
+_plot_cfg = load_plot_config()
+_, _, afilt, aexcl = resolve_filter_preset(_plot_cfg, SCRIPT_NAME)
 
 # main
 os.makedirs(figs_path, exist_ok=True)

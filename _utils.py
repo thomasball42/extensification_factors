@@ -57,3 +57,30 @@ def load_aggregate_matcher(config_path: Path = CONFIG_PATH):
         return any(pattern in item_lower for pattern in name_patterns)
 
     return is_aggregate
+
+
+# ---------------------------------------------------------------------------
+# plot_config.json (plotting-script filter presets / per-script parameters)
+# ---------------------------------------------------------------------------
+
+PLOT_CONFIG_PATH = Path(__file__).parent / "plot_config.json"
+
+
+def load_plot_config(config_path: Path = PLOT_CONFIG_PATH) -> dict:
+    """Returns the full parsed plot_config.json."""
+    with open(config_path) as f:
+        return json.load(f)
+
+
+def resolve_filter_preset(plot_config: dict, script_name: str) -> tuple:
+    """Looks up plot_config["scripts"][script_name]["active"], resolves it
+    against plot_config["filter_presets"], and returns
+    (ifilt, iexcl, afilt, aexcl) -- any field the preset doesn't define
+    (e.g. a preset with no afilt, used by a script with no area filter)
+    defaults to []."""
+    active = plot_config["scripts"][script_name]["active"]
+    preset = plot_config["filter_presets"][active]
+    return (
+        preset.get("ifilt", []), preset.get("iexcl", []),
+        preset.get("afilt", []), preset.get("aexcl", []),
+    )

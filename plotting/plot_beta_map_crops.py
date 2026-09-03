@@ -26,36 +26,26 @@ from matplotlib.colors import ListedColormap, Normalize
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from _geo import load_country_codes, load_world, time_windows
-from _utils import filter_list as _filter_list
+from _utils import filter_list as _filter_list, load_plot_config
+
+SCRIPT_NAME = "plot_beta_map_crops"
 
 dat_path = Path("outputs") / "beta_crops.csv"
 figs_path = Path("..") / "figs" / "beta_map_crops"
 SAVE = True
 
-norm_min_max = (0.0, 1.0)
-ZERO_FRAC = 0.0  # fraction of the colorbar's height where 0 sits
-N_WINDOWS = 2
-START_YEAR = None  # e.g. 2000; None = start of available data
-END_YEAR = None  # e.g. 2023; None = end of available data
+_map_cfg = load_plot_config()["maps"][SCRIPT_NAME]
+norm_min_max = tuple(_map_cfg["norm_min_max"])
+ZERO_FRAC = _map_cfg["ZERO_FRAC"]  # fraction of the colorbar's height where 0 sits
+N_WINDOWS = _map_cfg["N_WINDOWS"]
+START_YEAR = _map_cfg["START_YEAR"]  # e.g. 2000; None = start of available data
+END_YEAR = _map_cfg["END_YEAR"]  # e.g. 2023; None = end of available data
 CMAP = "RdBu_r"  # diverging: blue below 0, red above
 CMAP_DIFF = "RdBu_r"  # red = beta rose between historical windows, blue = beta fell
 
-# crop filtering (kept in sync with beta_timeseries_crops.py / beta_linear_crops.py)
-ifilt = [
-        "rice",
-        "wheat",
-        "maize",
-        # "sorghum",
-        # "soy",
-        "potato",
-        "sugar cane",
-        # "barley",
-        # "Cereal"
-        ]
-
-iexcl = [
-        "buckwheat", "green corn", "n.e.c.", "sweet potato"
-         ]
+# crop filtering
+ifilt = _map_cfg.get("ifilt", [])
+iexcl = _map_cfg.get("iexcl", [])
 
 
 figsize = (8, 6)

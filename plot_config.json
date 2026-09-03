@@ -1,0 +1,89 @@
+{
+  "filter_presets": {
+    "wheat_major_producers": {
+      "ifilt": ["wheat"],
+      "iexcl": ["buckwheat", "green corn", "n.e.c.", "sweet potato"],
+      "afilt": ["United Kingdom of Great Britain and Northern Ireland", "France", "India", "China, mainland"],
+      "aexcl": ["taiwan", "southern", "northern", "western", "eastern", "republic", "union", "middle", "South Africa", "central"]
+    },
+    "cereals_by_region": {
+      "ifilt": ["Cereal"],
+      "iexcl": ["buckwheat", "n.e.c."],
+      "afilt": ["Africa", "Europe", "Northern America", "Eastern Asia", "Southern Asia", "South America"],
+      "aexcl": ["taiwan", "southern", "northern", "western", "eastern", "republic", "union", "middle", "South Africa", "central"]
+    },
+    "top5_crops": {
+      "ifilt": ["rice", "wheat", "maize", "potato", "sugar cane"],
+      "iexcl": ["buckwheat", "green corn", "n.e.c.", "sweet"]
+    },
+    "animals_4countries": {
+      "afilt": ["United Kingdom", "Brazil", "India", "China, mainland"],
+      "aexcl": []
+    }
+  },
+
+  "scripts": {
+    "plot_area_yield_decomposition": {
+      "active": "wheat_major_producers"
+    },
+    "plot_area_yield_production_trajectory": {
+      "active": "cereals_by_region"
+    },
+    "plot_beta_timeseries_crops": {
+      "active": "wheat_major_producers"
+    },
+    "plot_beta_timeseries_animals": {
+      "active": "animals_4countries"
+    },
+    "plot_beta_linear_crops": {
+      "active": "wheat_major_producers"
+    },
+    "plot_beta_boxplot_by_region_crops": {
+      "active": "top5_crops",
+      "take_mean": false
+    },
+    "plot_beta_distribution_by_region_crops": {
+      "active": "top5_crops",
+      "take_mean": false
+    }
+  },
+
+  "maps": {
+    "plot_beta_map_crops": {
+      "ifilt": ["rice", "wheat", "maize", "potato", "sugar cane"],
+      "iexcl": ["buckwheat", "green corn", "n.e.c.", "sweet potato"],
+      "N_WINDOWS": 2,
+      "START_YEAR": null,
+      "END_YEAR": null,
+      "norm_min_max": [0.0, 1.0],
+      "ZERO_FRAC": 0.0
+    },
+    "plot_beta_map_animals": {
+      "N_WINDOWS": 1,
+      "START_YEAR": null,
+      "END_YEAR": null,
+      "norm_min_max": [-0.1, 0.3]
+    }
+  },
+
+  "land_use_impact": {
+    "plot_beta_error_land_use_impact_crops": {
+      "benchmark_f": 0.20,
+      "sweep_f_max": 1.0,
+      "sweep_n": 50,
+      "top_n_items": 10,
+      "ifilt": [],
+      "iexcl": []
+    },
+    "plot_beta_error_land_use_impact_animals": {
+      "benchmark_f": 0.20,
+      "sweep_f_max": 1.0,
+      "sweep_n": 50
+    },
+    "plot_beta_pred_vs_actual_land_use_crops": {
+      "top_n_items": 10,
+      "ifilt": [],
+      "iexcl": []
+    }
+  }
+}

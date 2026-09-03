@@ -21,45 +21,18 @@ from pathlib import Path
 import os
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from _utils import filter_list as _filter_list
+from _utils import filter_list as _filter_list, load_plot_config, resolve_filter_preset
+
+SCRIPT_NAME = "plot_area_yield_production_trajectory"
 
 DATA_PATH = Path("data") / "inputs"
 figs_path = Path("..") / "figs" / "area_yield_production_trajectory"
 
 SAVE = True
 
-#filtering
-
-ifilt = [
-        "Cereal"
-        ]
-
-iexcl = [
-        "buckwheat",
-        "n.e.c."
-        ]
-
-afilt = [
-        "Africa",
-        "Europe",
-        "Northern America",
-        "Eastern Asia",
-        "Southern Asia",
-        "South America",
-        ]
-
-aexcl = [
-        "taiwan",
-        "southern",
-        "northern",
-        "western",
-        "eastern",
-        "republic",
-        "union",
-        "middle",
-        "South Africa",
-        "central"
-        ]
+# filtering
+_plot_cfg = load_plot_config()
+ifilt, iexcl, afilt, aexcl = resolve_filter_preset(_plot_cfg, SCRIPT_NAME)
 
 # main
 os.makedirs(figs_path, exist_ok=True)

@@ -18,60 +18,17 @@ from pathlib import Path
 import os
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from _utils import filter_list as _filter_list
+from _utils import filter_list as _filter_list, load_plot_config, resolve_filter_preset
 
-dat_path = Path("outputs") / "beta_crops_linear.csv"
+SCRIPT_NAME = "plot_beta_linear_crops"
+
+dat_path = Path("outputs") / "linear" / "beta_crops_linear.csv"
 figs_path = Path("..") / "figs" / "beta_linear_crops"
 SAVE = True
 
 # filtering (kept in sync with beta_timeseries_crops.py)
-ifilt = [
-        # "rice",
-        "wheat",
-        # "maize",
-        # "sorghum",
-        # "soy",
-        # "barley",
-        # "Cereal"
-        ]
-
-iexcl = [
-        "buckwheat", "green corn", "n.e.c."
-         ]
-
-afilt = [
-        "United Kingdom of Great Britain and Northern Ireland", 
-        "France", 
-        # "Brazil", "China", "India", "United States"
-        # "World",
-        # "United Kingdom",
-        # "Brazil",
-        # "Argentina",
-        # "India",
-        "China, mainland",
-        # "Europe",
-        # "Africa",
-        # # "Latin America"
-        # "South America",
-        # "Northern America",
-        # "Eastern Asia",
-        # "Southern Asia",
-        # "United States of America",
-        "Japan"
-        ]
-
-aexcl = [
-        "taiwan",
-        "southern",
-        "northern",
-        "western",
-        "eastern",
-        "republic",
-        "union",
-        "middle",
-        "South Africa",
-        "central"
-        ]
+_plot_cfg = load_plot_config()
+ifilt, iexcl, afilt, aexcl = resolve_filter_preset(_plot_cfg, SCRIPT_NAME)
 
 # main
 

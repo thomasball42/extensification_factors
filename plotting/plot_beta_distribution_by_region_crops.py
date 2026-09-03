@@ -22,31 +22,17 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from _geo import load_country_codes, load_world, weighted_mean_se
-from _utils import filter_list as _filter_list
+from _utils import filter_list as _filter_list, load_plot_config, resolve_filter_preset
+
+SCRIPT_NAME = "plot_beta_distribution_by_region_crops"
 
 dat_path = Path("outputs") / "beta_crops.csv"
 figs_path = Path("..") / "figs" / "beta_distribution_by_region_crops"
 SAVE = True
 
-
-take_mean = False
-
-
-ifilt = [
-        "rice",
-        "wheat",
-        "maize",
-        # "sorghum",
-        # "soy",
-        "potato",
-        "sugar cane",
-        # "barley",
-        # "Cereal"
-        ]
-
-iexcl = [
-        "buckwheat", "green corn", "n.e.c.", "sweet"
-         ]
+_plot_cfg = load_plot_config()
+ifilt, iexcl, _, _ = resolve_filter_preset(_plot_cfg, SCRIPT_NAME)
+take_mean = _plot_cfg["scripts"][SCRIPT_NAME].get("take_mean", False)
 
 os.makedirs(figs_path, exist_ok=True)
 
