@@ -20,14 +20,14 @@ from matplotlib.cm import ScalarMappable
 from matplotlib.colors import TwoSlopeNorm
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from _geo import load_country_codes, load_world, time_windows
 from _utils import load_plot_config
 
 SCRIPT_NAME = "plot_beta_map_animals"
 
 dat_path = Path("outputs") / "beta_animals.csv"
-figs_path = Path("..") / "figs" / "beta_map_animals"
+figs_path = Path("..") / "figs" / "map" / "beta_map_animals"
 SAVE = True
 
 _map_cfg = load_plot_config()["maps"][SCRIPT_NAME]

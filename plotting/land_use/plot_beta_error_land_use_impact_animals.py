@@ -26,14 +26,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from _utils import load_plot_config
 
 SCRIPT_NAME = "plot_beta_error_land_use_impact_animals"
 
 BETA_PATH = Path("outputs") / "beta_animals.csv"
 HOLDOUT_PATH = Path("outputs") / "validation" / "holdout_static_comparison_animals_pweighted.csv"
-figs_path = Path("..") / "figs" / "beta_error_land_use_impact_animals"
+figs_path = Path("..") / "figs" / "land_use" / "beta_error_land_use_impact_animals"
 SAVE = True
 
 _lui_cfg = load_plot_config()["land_use_impact"][SCRIPT_NAME]

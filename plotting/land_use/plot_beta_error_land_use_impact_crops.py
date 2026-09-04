@@ -30,8 +30,11 @@ Produces:
                                        vs. production-weighted
   land_use_error_sweep.png         -- total hectares of uncertainty vs. the
                                        size of the assumed production increase
-  land_use_error_by_item.png       -- top items by total hectares of
-                                       uncertainty at the benchmark scenario
+  land_use_error_by_item.png       -- top items by production-weighted mean
+                                       % error at the benchmark scenario (not
+                                       total hectares -- that ranking is
+                                       dominated by whichever crops simply
+                                       have the largest land footprint)
 """
 
 import colorsys
@@ -44,14 +47,17 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from _utils import filter_list as _filter_list, load_aggregate_matcher, load_plot_config
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+from _utils import (
+    add_beta_current, filter_list as _filter_list, load_aggregate_matcher,
+    load_plot_config, weighted_group_mean,
+)
 
 SCRIPT_NAME = "plot_beta_error_land_use_impact_crops"
 
 BETA_PATH = Path("outputs") / "beta_crops.csv"
 HOLDOUT_PATH = Path("outputs") / "validation" / "holdout_static_comparison_pweighted.csv"
-figs_path = Path("..") / "figs" / "beta_error_land_use_impact_crops"
+figs_path = Path("..") / "figs" / "land_use" / "beta_error_land_use_impact_crops"
 SAVE = True
 
 _lui_cfg = load_plot_config()["land_use_impact"][SCRIPT_NAME]
@@ -59,6 +65,7 @@ BENCHMARK_F = _lui_cfg["benchmark_f"]   # headline production-increase scenario 
 SWEEP_F_MAX = _lui_cfg["sweep_f_max"]   # sensitivity sweep goes from 0% to +100% production
 SWEEP_N = _lui_cfg["sweep_n"]
 TOP_N_ITEMS = _lui_cfg["top_n_items"]
+MIN_SERIES_PER_ITEM = _lui_cfg.get("min_series_per_item", 3)
 
 ifilt = _lui_cfg.get("ifilt", [])  # empty = no item filtering (every crop with a validated holdout MAE)
 iexcl = _lui_cfg.get("iexcl", [])
@@ -104,19 +111,7 @@ ha_unit_raw = area_col.split("current_area_harvested_", 1)[1]
 ha_multiplier = 1000.0 if ha_unit_raw.strip().startswith("1000") else 1.0
 ha_unit = ha_unit_raw.split()[-1]
 
-# each series's own most recent (current_year) beta -- not a fixed calendar year,
-# since not every item's series necessarily runs through the same last year
-beta_year_cols = sorted((c for c in beta_df.columns if c.startswith("beta_")), key=lambda c: int(c.split("_")[1]))
-years_avail = [int(c.split("_")[1]) for c in beta_year_cols]
-col_of_year = {y: i for i, y in enumerate(years_avail)}
-current_year = beta_df["current_year"].astype(int)
-col_pos = current_year.map(col_of_year)
-has_col = col_pos.notna()
-beta_df["beta_current"] = np.nan
-row_pos = np.flatnonzero(has_col.values)
-col_pos_valid = col_pos[has_col].astype(int).values
-beta_df.loc[has_col, "beta_current"] = beta_df[beta_year_cols].values[row_pos, col_pos_valid]
-
+beta_df = add_beta_current(beta_df)
 beta_df = beta_df.dropna(subset=["beta_current", area_col, prod_col])
 beta_df = beta_df[(beta_df[area_col] > 0) & (beta_df[prod_col] > 0)]
 
@@ -223,15 +218,24 @@ ax2.set_title(f"How the land-use stakes of the model's error grow with the\n"
 ax2.legend(loc="upper left", fontsize=8, ncol=2)
 fig2.tight_layout()
 
-by_item_plot = by_item_bench.head(TOP_N_ITEMS).iloc[::-1]
+# Ranking by total hectares of uncertainty (as above, used for the sweep
+# overlay) is dominated by whichever crops simply have the largest land
+# footprint. This panel instead ranks by production-weighted mean % error --
+# each series weighted by its held-out-test-year average production, so
+# accuracy is compared in proportional terms and a handful of small, noisy
+# series can't dominate an item's score.
+pct_item_df = pd.DataFrame({"Item": df["Item"].values, "error_pct_bench": error_pct_bench, "weight": weight})
+by_item_pct = weighted_group_mean(pct_item_df, "Item", "error_pct_bench", "weight", min_count=MIN_SERIES_PER_ITEM)
+
+by_item_plot = by_item_pct.head(TOP_N_ITEMS).iloc[::-1]
 
 fig3, ax3 = plt.subplots(figsize=(8, 0.4 * len(by_item_plot) + 2))
-ax3.barh(np.arange(len(by_item_plot)), by_item_plot.values / 1e6, color=BASE_PALETTE[0])
+ax3.barh(np.arange(len(by_item_plot)), by_item_plot.values, color=BASE_PALETTE[0])
 ax3.set_yticks(np.arange(len(by_item_plot)))
 ax3.set_yticklabels(by_item_plot.index)
-ax3.set_xlabel(f"Total land-use projection uncertainty (million {ha_unit})")
-ax3.set_title(f"Top {len(by_item_plot)} items by land-use uncertainty, "
-              f"+{BENCHMARK_F:.0%} production scenario")
+ax3.set_xlabel("Production-weighted mean land-use projection error (%)")
+ax3.set_title(f"Top {len(by_item_plot)} items by production-weighted % land-use error, "
+              f"+{BENCHMARK_F:.0%} production scenario\n(items with < {MIN_SERIES_PER_ITEM} series excluded)")
 fig3.tight_layout()
 
 plt.show()

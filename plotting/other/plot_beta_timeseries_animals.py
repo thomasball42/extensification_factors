@@ -5,13 +5,13 @@ from pathlib import Path
 import os
 import sys
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from _utils import filter_list as _filter_list, load_plot_config, resolve_filter_preset
 
 SCRIPT_NAME = "plot_beta_timeseries_animals"
 
 dat_path = Path("outputs") / "beta_animals.csv"
-figs_path = Path("..") / "figs" / "beta_timeseries_animals"
+figs_path = Path("..") / "figs" / "other" / "beta_timeseries_animals"
 
 
 SAVE = True

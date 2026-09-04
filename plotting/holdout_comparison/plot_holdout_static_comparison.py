@@ -26,7 +26,7 @@ import os
 
 dat_path = Path("outputs") / "validation" / "holdout_static_comparison_pweighted.csv"
 by_item_path = Path("outputs") / "validation" / "holdout_static_comparison_by_item_pweighted.csv"
-figs_path = Path("..") / "figs" / "holdout_static_comparison"
+figs_path = Path("..") / "figs" / "holdout_comparison" / "holdout_static_comparison"
 
 SAVE = True
 TOP_N_ITEMS = 15   # by total_production_weight, for the per-item panels

@@ -20,15 +20,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "map"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from _geo import load_country_codes, load_world, weighted_mean_se
 from _utils import filter_list as _filter_list, load_plot_config, resolve_filter_preset
 
 SCRIPT_NAME = "plot_beta_boxplot_by_region_crops"
 
 dat_path = Path("outputs") / "beta_crops.csv"
-figs_path = Path("..") / "figs" / "beta_distribution_by_region_crops"
+figs_path = Path("..") / "figs" / "beta_distributions" / "beta_distribution_by_region_crops"
 SAVE = True
 
 # True: production-weighted mean across the selected crops, one box per

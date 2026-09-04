@@ -23,7 +23,7 @@ from pathlib import Path
 import os
 
 dat_path = Path("outputs") / "validation" / "q_prior_shrinkage" / "quartile_comparison_all_settings.csv"
-figs_path = Path("..") / "figs" / "q_prior_shrinkage_validation"
+figs_path = Path("..") / "figs" / "other" / "q_prior_shrinkage_validation"
 
 SAVE = True
 

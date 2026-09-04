@@ -1,6 +1,9 @@
 import json
 from pathlib import Path
 
+import numpy as np
+import pandas as pd
+
 # ---------------------------------------------------------------------------
 # Item/Area name filtering (plotting scripts)
 # ---------------------------------------------------------------------------
@@ -84,3 +87,47 @@ def resolve_filter_preset(plot_config: dict, script_name: str) -> tuple:
         preset.get("ifilt", []), preset.get("iexcl", []),
         preset.get("afilt", []), preset.get("aexcl", []),
     )
+
+
+# ---------------------------------------------------------------------------
+# Beta-series helpers (shared by land-use error/pred-vs-actual plotting
+# scripts, crops and Brazil alike)
+# ---------------------------------------------------------------------------
+
+def add_beta_current(df: pd.DataFrame) -> pd.DataFrame:
+    """Adds a "beta_current" column: each row's own most-recent (current_year)
+    beta, looked up from its wide beta_<year> columns. Not a fixed calendar
+    year, since not every row's series necessarily runs through the same
+    last year. Rows whose current_year has no matching beta_<year> column
+    get NaN. Returns df (mutated in place, also returned for convenience)."""
+    beta_year_cols = sorted((c for c in df.columns if c.startswith("beta_")), key=lambda c: int(c.split("_")[1]))
+    years_avail = [int(c.split("_")[1]) for c in beta_year_cols]
+    col_of_year = {y: i for i, y in enumerate(years_avail)}
+    current_year = df["current_year"].astype(int)
+    col_pos = current_year.map(col_of_year)
+    has_col = col_pos.notna()
+    df["beta_current"] = np.nan
+    row_pos = np.flatnonzero(has_col.values)
+    col_pos_valid = col_pos[has_col].astype(int).values
+    df.loc[has_col, "beta_current"] = df[beta_year_cols].values[row_pos, col_pos_valid]
+    return df
+
+
+def weighted_group_mean(df: pd.DataFrame, group_col: str, value_col: str, weight_col: str,
+                         min_count: int = 1) -> pd.Series:
+    """Weight-`weight_col` mean of `value_col` within each `group_col` group
+    -- e.g. production-weighted mean % error per crop Item, or per Brazil
+    state (uf). Groups with fewer than `min_count` rows, or non-positive
+    total weight, are dropped. Returns a Series indexed by group, sorted
+    descending by the weighted mean (worst/highest first)."""
+    counts = df.groupby(group_col).size()
+
+    def _weighted_mean(g):
+        wt = g[weight_col].to_numpy()
+        if wt.sum() <= 0:
+            return np.nan
+        return np.average(g[value_col], weights=wt)
+
+    result = df.groupby(group_col).apply(_weighted_mean, include_groups=False)
+    result = result[counts[result.index] >= min_count]
+    return result.dropna().sort_values(ascending=False)

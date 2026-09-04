@@ -72,6 +72,7 @@
       "sweep_f_max": 1.0,
       "sweep_n": 50,
       "top_n_items": 10,
+      "min_series_per_item": 3,
       "ifilt": [],
       "iexcl": []
     },
@@ -82,6 +83,7 @@
     },
     "plot_beta_pred_vs_actual_land_use_crops": {
       "top_n_items": 10,
+      "min_series_per_item": 3,
       "ifilt": [],
       "iexcl": []
     }

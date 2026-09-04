@@ -20,13 +20,13 @@ from matplotlib.lines import Line2D
 from pathlib import Path
 import os
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from _utils import filter_list as _filter_list, load_plot_config, resolve_filter_preset
 
 SCRIPT_NAME = "plot_area_yield_production_trajectory"
 
 DATA_PATH = Path("data") / "inputs"
-figs_path = Path("..") / "figs" / "area_yield_production_trajectory"
+figs_path = Path("..") / "figs" / "other" / "area_yield_production_trajectory"
 
 SAVE = True
 
