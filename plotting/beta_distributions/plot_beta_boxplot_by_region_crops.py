@@ -9,6 +9,12 @@ take_mean is True, each country's items are combined via a
 production-weighted mean/SE (see _geo.weighted_mean_se), using each item's
 own most recent (current_year) beta rather than a fixed calendar year, since
 not every item's series necessarily runs through the same last year.
+
+Groups with fewer than MIN_N_FOR_BOX countries (e.g. Northern America, often
+just Canada + the US) are drawn as raw points instead of a box: with n=2,
+matplotlib's linear-interpolated Q1/Q3 fall strictly between the two values,
+so the box would cover a stretch with no data behind it while the whiskers
+reach out to the two real points -- misleading rather than just uninformative.
 """
 
 import os
@@ -24,6 +30,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "map"))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from _geo import load_country_codes, load_world, weighted_mean_se
 from _utils import filter_list as _filter_list, load_plot_config, resolve_filter_preset
+from _utils import label_helper
 
 SCRIPT_NAME = "plot_beta_boxplot_by_region_crops"
 
@@ -115,14 +122,27 @@ continent_n = country_stats.groupby("CONTINENT")["NAME"].nunique()
 
 x_of_continent = {c: i for i, c in enumerate(continents)}
 
-fig, ax = plt.subplots(figsize=(max(8, 1.8 * len(continents) + 2), 7))
+fig, ax = plt.subplots(figsize=(1.4 * len(continents), 5))
 
 for _ in [0, 1]:
     ax.axhline(y=_, color="k", linestyle="--", linewidth=0.5, alpha=0.5)
 
 
-def _draw_box(values, position, width, color):
-    bp = ax.boxplot(
+# below this many countries, quartiles/whiskers are just interpolation
+# artifacts with no data behind them -- plot the raw points instead
+MIN_N_FOR_BOX = 3
+_jitter_rng = np.random.default_rng(0)
+
+
+def _draw_group(values, position, width, color):
+    if len(values) < MIN_N_FOR_BOX:
+        jitter = _jitter_rng.uniform(-width * 0.25, width * 0.25, size=len(values)) if len(values) > 1 else [0.0]
+        ax.plot(
+            position + np.asarray(jitter), values, "o", markersize=6, markerfacecolor=color,
+            markeredgecolor="black", markeredgewidth=0.75, alpha=0.85, linestyle="none",
+        )
+        return None
+    return ax.boxplot(
         values, positions=[position], widths=width, patch_artist=True,
         showfliers=True, whis=1.5,
         flierprops=dict(marker="o", markersize=3, markerfacecolor=color,
@@ -132,7 +152,6 @@ def _draw_box(values, position, width, color):
         whiskerprops=dict(color="black", linewidth=1),
         capprops=dict(color="black", linewidth=1),
     )
-    return bp
 
 
 if take_mean:
@@ -141,7 +160,7 @@ if take_mean:
         values = country_stats.loc[mask, "beta"].dropna().values
         if len(values) == 0:
             continue
-        _draw_box(values, x_of_continent[c], width=0.5, color=continent_color[c])
+        _draw_group(values, x_of_continent[c], width=0.5, color=continent_color[c])
 else:
     # colour by crop instead of continent; each crop gets its own sub-band
     # within the continent's slot, so same-crop boxes line up across regions
@@ -155,14 +174,15 @@ else:
             if len(values) == 0:
                 continue
             band_center = -0.3 + (i + 0.5) * band_width
-            _draw_box(values, x_of_continent[c] + band_center, width=band_width * 0.8, color=crop_color[crop])
+            _draw_group(values, x_of_continent[c] + band_center, width=band_width * 0.8, color=crop_color[crop])
 
     legend_handles = [mpatches.Patch(facecolor=crop_color[crop], edgecolor="black", alpha=0.75, label=crop)
                        for crop in items]
     ax.legend(handles=legend_handles, loc="best", fontsize=8, framealpha=0.9)
 
+
 ax.set_xticks(range(len(continents)))
-ax.set_xticklabels([f"{c}\n(n={continent_n[c]})" for c in continents])
+ax.set_xticklabels([(f"{label_helper(c)}\n(n={continent_n[c]})") for c in continents], rotation=35)
 ax.set_xlim(-0.6, len(continents) - 0.4)
 
 # y-limits from the point estimates only so a handful of very uncertain
@@ -175,7 +195,7 @@ if take_mean:
     ax.set_ylabel(r"Mean extensification parameter $\beta$ "
                   r"(production-weighted across crops)")
 else:
-    ax.set_ylabel(r"Extensification parameter $\beta$")
+    ax.set_ylabel(r"Extensification parameter $\beta$, prior'd TVP/Kalman, current year")
 # ax.set_title("Distribution of country-level crop extensification betas, by continent")
 
 fig.tight_layout()

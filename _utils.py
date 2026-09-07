@@ -4,9 +4,13 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-# ---------------------------------------------------------------------------
-# Item/Area name filtering (plotting scripts)
-# ---------------------------------------------------------------------------
+def label_helper(label):
+    lsplit = label.split(" ")
+    if len(lsplit) > 2: 
+        ilabel = " ".join(lsplit[:2]) + "\n" + " ".join(lsplit[2:])
+    else:
+        ilabel = label
+    return ilabel
 
 def filter_list(all_, filt_, excl_):
     """Substring-filter `all_` (case-insensitive) down to entries matching
@@ -24,10 +28,6 @@ def filter_list(all_, filt_, excl_):
         and (i.lower() in filt or not any(f in i.lower() for f in excl))
     ]
 
-
-# ---------------------------------------------------------------------------
-# FAOSTAT aggregate-item flagging
-# ---------------------------------------------------------------------------
 
 CONFIG_PATH = Path(__file__).parent / "config.json"
 
@@ -111,6 +111,26 @@ def add_beta_current(df: pd.DataFrame) -> pd.DataFrame:
     col_pos_valid = col_pos[has_col].astype(int).values
     df.loc[has_col, "beta_current"] = df[beta_year_cols].values[row_pos, col_pos_valid]
     return df
+
+
+def load_grazing_item_codes(config_path: Path = CONFIG_PATH) -> set:
+    """Returns the set of int Item Codes from config.json's "raw_animal_products"
+    section flagged "grazing": true -- the FAOSTAT commodities pooled into the
+    animals pipeline's synthetic "All pasture-based animal products" series."""
+    with open(config_path) as f:
+        config = json.load(f)
+    raw = config.get("raw_animal_products", {})
+    return {int(k) for k, v in raw.items() if v.get("grazing")}
+
+
+def load_grazing_land_use_codes(config_path: Path = CONFIG_PATH) -> set:
+    """Returns the set of int Item Codes from config.json's "land_use_codes"
+    section flagged "grazing": true -- the Inputs_LandUse_E_All_Data.csv land
+    types summed into the animals pipeline's pooled pasture-area series."""
+    with open(config_path) as f:
+        config = json.load(f)
+    land_use = config.get("land_use_codes", {})
+    return {int(k) for k, v in land_use.items() if v.get("grazing")}
 
 
 def weighted_group_mean(df: pd.DataFrame, group_col: str, value_col: str, weight_col: str,

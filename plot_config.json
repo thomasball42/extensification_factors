@@ -81,11 +81,19 @@
       "sweep_f_max": 1.0,
       "sweep_n": 50
     },
+    "compute_beta_pred_vs_actual_land_use_crops": {
+      "ifilt": [],
+      "iexcl": [],
+      "scenario_fixed_f": [0.05, 0.10],
+      "min_transitions_per_series": 3
+    },
     "plot_beta_pred_vs_actual_land_use_crops": {
       "top_n_items": 10,
-      "min_series_per_item": 3,
-      "ifilt": [],
-      "iexcl": []
+      "min_series_per_item": 3
+    },
+    "compute_beta_pred_vs_actual_land_use_animals": {
+      "scenario_fixed_f": [0.05, 0.10],
+      "min_transitions_per_series": 3
     }
   }
 }
