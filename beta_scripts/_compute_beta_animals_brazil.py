@@ -28,7 +28,7 @@ OUT_PATH: Path = EXT_FACTORS_DIR / "outputs" / "brazil" / "beta_animals_local_Br
 MIN_OBS: int = 8
 
 USE_Q_PRIOR: bool = True  # shrinkage prior on Q (see _stats.q_shrinkage_penalty); False = unregularized MLE
-USE_RESIDUALIZATION: bool = False  # two-way (region + year) FE residualization; off by default -- holdout validation on the main FAOSTAT series found this didn't improve results
+USE_RESIDUALIZATION: bool = True  # two-way (region + year) FE residualization; validation/animals/beta_grid_diagnostic_brazil.py found this flips the regional median beta positive (vs. negative under plain demeaning) and modestly improves holdout win rate -- the previous False default was carried over from crops' finding, not validated on this regional data
 
 Q_PRIOR_SCALE, Q_PRIOR_STRENGTH = load_q_prior_config() if USE_Q_PRIOR else (None, 1.0)
 
