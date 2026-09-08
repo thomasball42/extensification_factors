@@ -7,9 +7,7 @@ BASE_DIR = Path(__file__).resolve().parent
 
 SCRIPTS = [
     Path("beta_scripts") / "_compute_beta_crops.py",
-    Path("beta_scripts") / "_compute_beta_crops_linear.py",
     Path("beta_scripts") / "_compute_beta_animals.py",
-    Path("beta_scripts") / "_compute_beta_animals_linear.py",
 ]
 
 if __name__ == "__main__":

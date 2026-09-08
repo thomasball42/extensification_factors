@@ -16,9 +16,9 @@ from pathlib import Path
 from scipy.stats import linregress
 from _stats import build_annual_diffs
 
-REPO_ROOT: Path = Path(__file__).resolve().parent.parent
-DATA_PATH: Path = REPO_ROOT / "brazil" / "data" / "NL_local_domain.csv"
-OUT_PATH: Path = REPO_ROOT / "brazil" / "outputs" / "beta_animals_linear_local_Brazil.csv"
+EXT_FACTORS_DIR: Path = Path(__file__).resolve().parent.parent
+DATA_PATH: Path = EXT_FACTORS_DIR / "data" / "inputs" / "brazil" / "NL_local_domain.csv"
+OUT_PATH: Path = EXT_FACTORS_DIR / "outputs" / "brazil" / "beta_animals_linear_local_Brazil.csv"
 
 MIN_OBS: int = 8  # see _compute_beta_animals_brazil.py
 

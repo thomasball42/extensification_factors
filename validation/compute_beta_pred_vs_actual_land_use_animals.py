@@ -1,8 +1,8 @@
 """
 Animals counterpart to compute_beta_pred_vs_actual_land_use_crops.py -- see
 that module's docstring for the full methodology (same formula, same use of
-every valid historical year-over-year transition, same 3-scenario
-classification by the size of the actual production change). Reads
+every valid historical year-over-year transition, same 3 non-exclusive
+scenario ranges by the size of the actual production change). Reads
 outputs/beta_animals.csv for the beta_<year> history instead of
 outputs/beta_crops.csv.
 
@@ -58,18 +58,22 @@ CSV_OUT_PATH = Path("outputs") / "land_use_impact" / "land_use_pred_vs_actual_sc
 SAVE = True
 
 _lui_cfg = load_plot_config()["land_use_impact"][SCRIPT_NAME]
-SCENARIO_FIXED_F = _lui_cfg["scenario_fixed_f"]                # [0.05, 0.20], editable
+SCENARIO_A_IQR = _lui_cfg["scenario_a_iqr"]      # [0.25, 0.75] -- quantiles of the area's own history
+SCENARIO_B_RANGE = _lui_cfg["scenario_b_range"]  # [0.0, 0.05]
+SCENARIO_C_RANGE = _lui_cfg["scenario_c_range"]  # [0.05, 0.10]
+SCENARIO_D_MIN = _lui_cfg["scenario_d_min"]      # 0.10 -- no upper bound
 MIN_TRANSITIONS_PER_SERIES = _lui_cfg.get("min_transitions_per_series", 3)
 
 ID_COLS = ["Area", "Area Code"]
 YEAR_COL_RE = re.compile(r"^Y\d{4}$")  # excludes flag (YxxxxF) and note (YxxxxN) columns
 LAND_USE_HA_MULTIPLIER = 1000.0  # Inputs_LandUse_E_All_Data.csv reports "1000 ha"
 
-SCENARIO_KEYS = ["a", "b", "c"]
+SCENARIO_KEYS = ["a", "b", "c", "d"]
 SCENARIO_LABELS = {
-    "a": "Historical median |% production change|",
-    "b": f"{SCENARIO_FIXED_F[0]:.0%} production change",
-    "c": f"{SCENARIO_FIXED_F[1]:.0%} production change",
+    "a": f"Within series' historical IQR ({SCENARIO_A_IQR[0]:.0%}-{SCENARIO_A_IQR[1]:.0%}) of |% production change|",
+    "b": f"{SCENARIO_B_RANGE[0]:.0%}-{SCENARIO_B_RANGE[1]:.0%} production change",
+    "c": f"{SCENARIO_C_RANGE[0]:.0%}-{SCENARIO_C_RANGE[1]:.0%} production change",
+    "d": f"{SCENARIO_D_MIN:.0%}+ production change",
 }
 
 # ---------------------------------------------------------------------------
@@ -194,25 +198,27 @@ print(f"Directional accuracy (unweighted): {dir_acc:.1%}")
 print(f"Directional accuracy (production-weighted): {dir_acc_w:.1%}")
 
 # ---------------------------------------------------------------------------
-# Scenario classification: each transition's actual |% change| is assigned
-# to whichever of the 3 targets (area's own historical median, or the 2
-# fixed config values) it's closest to.
+# Scenario membership: each transition's actual |% change| is checked against
+# each of the 3 scenario ranges independently (not mutually exclusive -- a
+# transition can qualify for none, one, or more than one).
 # ---------------------------------------------------------------------------
 
-f_hist_by_series = trans.groupby(ID_COLS)["abs_prod_change_pct"].median().rename("f_hist")
-trans = trans.merge(f_hist_by_series.reset_index(), on=ID_COLS, how="left")
+f_hist_median = trans.groupby(ID_COLS)["abs_prod_change_pct"].median().rename("f_hist_median")
+f_hist_q1 = trans.groupby(ID_COLS)["abs_prod_change_pct"].quantile(SCENARIO_A_IQR[0]).rename("f_hist_q1")
+f_hist_q3 = trans.groupby(ID_COLS)["abs_prod_change_pct"].quantile(SCENARIO_A_IQR[1]).rename("f_hist_q3")
+trans = trans.merge(f_hist_median.reset_index(), on=ID_COLS, how="left")
+trans = trans.merge(f_hist_q1.reset_index(), on=ID_COLS, how="left")
+trans = trans.merge(f_hist_q3.reset_index(), on=ID_COLS, how="left")
 
-targets = np.stack([
-    trans["f_hist"].to_numpy(float),
-    np.full(len(trans), SCENARIO_FIXED_F[0]),
-    np.full(len(trans), SCENARIO_FIXED_F[1]),
-], axis=1)
-dist = np.abs(targets - trans["abs_prod_change_pct"].to_numpy(float)[:, None])
-trans["scenario"] = np.array(SCENARIO_KEYS)[np.argmin(dist, axis=1)]
-trans["scenario_label"] = trans["scenario"].map(SCENARIO_LABELS)
+f = trans["abs_prod_change_pct"]
+trans["in_scenario_a"] = f.between(trans["f_hist_q1"], trans["f_hist_q3"])
+trans["in_scenario_b"] = f.between(SCENARIO_B_RANGE[0], SCENARIO_B_RANGE[1], inclusive="left")
+trans["in_scenario_c"] = f.between(SCENARIO_C_RANGE[0], SCENARIO_C_RANGE[1], inclusive="left")
+trans["in_scenario_d"] = f.ge(SCENARIO_D_MIN)
+SCENARIO_COL = {"a": "in_scenario_a", "b": "in_scenario_b", "c": "in_scenario_c", "d": "in_scenario_d"}
 
 for key in SCENARIO_KEYS:
-    sub = trans[trans["scenario"] == key]
+    sub = trans[trans[SCENARIO_COL[key]]]
     w = sub["Production"].to_numpy(float)
     print(f"\n{SCENARIO_LABELS[key]}: {len(sub)} transitions")
     print(f"  Actual |% production change| in these transitions: mean {sub['abs_prod_change_pct'].mean():.1%}")
@@ -230,7 +236,7 @@ TRANSITIONS_OUT_COLS = ID_COLS + [
     "Year", "Production", "Production_prev", "Pasture area", "Pasture area_prev",
     "beta_t", "prod_change_pct", "abs_prod_change_pct", "predicted_A_t",
     "error_ha", "error_pct", "actual_a", "predicted_a", "correct_direction",
-    "scenario", "scenario_label",
+    "in_scenario_a", "in_scenario_b", "in_scenario_c", "in_scenario_d",
 ]
 
 if SAVE:
@@ -243,11 +249,11 @@ if SAVE:
 # ---------------------------------------------------------------------------
 
 csv_base = trans[ID_COLS].drop_duplicates().merge(
-    f_hist_by_series.reset_index()[ID_COLS + ["f_hist"]], on=ID_COLS, how="left",
-).rename(columns={"f_hist": "f_hist_abs_pct_change"})
+    f_hist_median.reset_index()[ID_COLS + ["f_hist_median"]], on=ID_COLS, how="left",
+).rename(columns={"f_hist_median": "f_hist_abs_pct_change"})
 
 for key in SCENARIO_KEYS:
-    sub = trans[trans["scenario"] == key]
+    sub = trans[trans[SCENARIO_COL[key]]]
     summ = sub.groupby(ID_COLS).agg(
         **{
             f"n_transitions_scenario_{key}": ("error_pct", "size"),

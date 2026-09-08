@@ -18,9 +18,9 @@ from pathlib import Path
 from _stats import fit_tvp_beta, build_annual_diffs, build_raw_diffs, residualize_two_way_fe
 from _utils import load_q_prior_config
 
-REPO_ROOT: Path = Path(__file__).resolve().parent.parent
-DATA_PATH: Path = REPO_ROOT / "brazil" / "data" / "NL_local_domain.csv"
-OUT_PATH: Path = REPO_ROOT / "brazil" / "outputs" / "beta_animals_local_Brazil.csv"
+EXT_FACTORS_DIR: Path = Path(__file__).resolve().parent.parent
+DATA_PATH: Path = EXT_FACTORS_DIR / "data" / "inputs" / "brazil" / "NL_local_domain.csv"
+OUT_PATH: Path = EXT_FACTORS_DIR / "outputs" / "brazil" / "beta_animals_local_Brazil.csv"
 
 # The FAOSTAT national analysis (_compute_beta_animals.py) uses 15. This local
 # file covers 2011-2021, so a region can contribute at most 10 annual

@@ -32,7 +32,8 @@ Produces (saved to ../../figs/brazil/):
                                                      production-weighted
   land_use_pred_vs_actual_error_hist_brazil.png  -- distribution of the
                                                      prediction error (actual
-                                                     - predicted), unweighted
+                                                     - predicted, as % of
+                                                     actual area), unweighted
                                                      vs. production-weighted
   land_use_pred_vs_actual_by_uf_brazil.png       -- states (uf) by
                                                      production-weighted mean
@@ -52,8 +53,8 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from _utils import add_beta_current, weighted_group_mean
 
-BETA_PATH = Path("..") / "brazil" / "outputs" / "beta_animals_local_Brazil.csv"
-RAW_DATA_PATH = Path("..") / "brazil" / "data" / "NL_local_domain.csv"
+BETA_PATH = Path("outputs") / "brazil" / "beta_animals_local_Brazil.csv"
+RAW_DATA_PATH = Path("data") / "inputs" / "brazil" / "NL_local_domain.csv"
 figs_path = Path("..") / "figs" / "brazil"
 SAVE = True
 
@@ -110,6 +111,7 @@ predicted_A_Y = A_prev * prod_ratio ** beta
 actual_delta_ha = A_Y - A_prev
 predicted_delta_ha = predicted_A_Y - A_prev
 error_ha = actual_delta_ha - predicted_delta_ha
+error_pct = 100.0 * error_ha / A_Y
 
 correct_direction = np.sign(actual_delta_ha) == np.sign(predicted_delta_ha)
 
@@ -130,21 +132,25 @@ print(f"Mean/median absolute hectare error: {np.mean(np.abs(error_ha)):,.0f} / "
 # 1. Predicted vs. actual scatter (log-change in area), unweighted vs. weighted
 # ---------------------------------------------------------------------------
 
-fig1, (ax1a, ax1b) = plt.subplots(1, 2, figsize=(12, 5.5))
+fig1, (ax1a, ax1b) = plt.subplots(1, 2, figsize=(8, 3))
 
 lims = np.nanpercentile(np.concatenate([actual_a, predicted_a]), [1, 99])
 pad = 0.1 * (lims[1] - lims[0])
 lims = (lims[0] - pad, lims[1] + pad)
 
 for ax, sizes, title in (
-    (ax1a, 14, "Unweighted"),
-    (ax1b, 8 + 400 * (weight / weight.max()), "Production-weighted (marker size)"),
+    (ax1a, 6, "(a) Unweighted"),
+    (ax1b, 4 + 200 * (weight / weight.max()), "(b) Production-weighted (marker size)"),
 ):
     ax.plot(lims, lims, color="0.4", linestyle="--", linewidth=1, zorder=1)
-    ax.scatter(actual_a[correct_direction], predicted_a[correct_direction], s=sizes if np.isscalar(sizes) else sizes[correct_direction],
-               color=COLOR_CORRECT, alpha=0.55, edgecolors="none", label="correct direction", zorder=2)
-    ax.scatter(actual_a[~correct_direction], predicted_a[~correct_direction], s=sizes if np.isscalar(sizes) else sizes[~correct_direction],
-               color=COLOR_WRONG, alpha=0.55, edgecolors="none", label="wrong direction", zorder=2)
+    ax.scatter(actual_a[correct_direction], predicted_a[correct_direction],
+               s=sizes if np.isscalar(sizes) else sizes[correct_direction],
+               color=COLOR_CORRECT, alpha=0.35, edgecolors="none", label="correct direction",
+               zorder=2, rasterized=True)
+    ax.scatter(actual_a[~correct_direction], predicted_a[~correct_direction],
+               s=sizes if np.isscalar(sizes) else sizes[~correct_direction],
+               color=COLOR_WRONG, alpha=0.35, edgecolors="none", label="wrong direction",
+               zorder=2, rasterized=True)
     ax.set_xlim(lims)
     ax.set_ylim(lims)
     ax.axhline(0, color="0.85", linewidth=0.8, zorder=0)
@@ -154,51 +160,41 @@ for ax, sizes, title in (
     ax.set_title(title)
     ax.legend(loc="upper left", fontsize=8)
 
-acc_label = f"unweighted acc. {dir_acc:.0%}, R2 {r2:.2f}"
-acc_label_w = f"weighted acc. {dir_acc_w:.0%}"
-ax1a.text(0.97, 0.03, acc_label, transform=ax1a.transAxes, ha="right", va="bottom", fontsize=8, color="0.3")
-ax1b.text(0.97, 0.03, acc_label_w, transform=ax1b.transAxes, ha="right", va="bottom", fontsize=8, color="0.3")
+ax1a.text(0.97, 0.03, f"unweighted acc. {dir_acc:.0%}, R2 {r2:.2f}", transform=ax1a.transAxes,
+          ha="right", va="bottom", fontsize=8, color="0.3")
+ax1b.text(0.97, 0.03, f"weighted acc. {dir_acc_w:.0%}", transform=ax1b.transAxes,
+          ha="right", va="bottom", fontsize=8, color="0.3")
 
-fig1.suptitle(f"Brazil: does beta predict the pasture-area change that actually happened?\n"
-              f"({len(df)} immediate regions, each at its own most recent year)")
 fig1.tight_layout()
 
 # ---------------------------------------------------------------------------
-# 2. Prediction-error distribution (actual - predicted), unweighted vs. weighted
+# 2. Prediction-error distribution (actual - predicted, % of actual area),
+#    unweighted vs. weighted
 # ---------------------------------------------------------------------------
 
-error_k = error_ha / 1e3
-clip_lo, clip_hi = np.nanpercentile(error_k, [1, 99])
+clip_lo, clip_hi = np.nanpercentile(error_pct, [1, 99])
 hist_range = (clip_lo, clip_hi)
-n_clipped = int(((error_k < clip_lo) | (error_k > clip_hi)).sum())
 
-fig2, (ax2a, ax2b) = plt.subplots(1, 2, figsize=(12, 5))
+fig2, (ax2a, ax2b) = plt.subplots(1, 2, figsize=(8, 3))
 
-ax2a.hist(error_k, bins=60, range=hist_range, color=BASE_PALETTE[0], alpha=0.8)
-ax2a.axvline(0, color="0.3", linestyle="-", linewidth=1)
-ax2a.axvline(np.mean(error_k), color=BASE_PALETTE[7], linestyle="-", linewidth=1.5,
-             label=f"mean {np.mean(error_k):,.0f}k ha")
-ax2a.axvline(np.median(error_k), color=BASE_PALETTE[5], linestyle="-", linewidth=1.5,
-             label=f"median {np.median(error_k):,.0f}k ha")
-ax2a.set_xlabel(f"Prediction error, actual - predicted (1000 ha)\n"
-                 f"[{n_clipped} regions outside the 1st-99th percentile range not shown]")
+ax2a.hist(error_pct, bins=60, range=hist_range, color=BASE_PALETTE[0], alpha=0.8)
+ax2a.axvline(0, color="0.3", linewidth=1)
+ax2a.axvline(np.mean(error_pct), color=BASE_PALETTE[7], linewidth=1.5, label=f"mean {np.mean(error_pct):.1f}%")
+ax2a.axvline(np.median(error_pct), color=BASE_PALETTE[5], linewidth=1.5, label=f"median {np.median(error_pct):.1f}%")
+ax2a.set_xlabel("Prediction error \n(actual - predicted, % of area)")
 ax2a.set_ylabel("Number of regions")
-ax2a.set_title("Unweighted")
+ax2a.set_title("(a) Unweighted")
 ax2a.legend(fontsize=8)
 
-w_mean = np.average(error_k, weights=weight)
-ax2b.hist(error_k, bins=60, range=hist_range, weights=weight, color=BASE_PALETTE[2], alpha=0.8)
-ax2b.axvline(0, color="0.3", linestyle="-", linewidth=1)
-ax2b.axvline(w_mean, color=BASE_PALETTE[7], linestyle="-", linewidth=1.5,
-             label=f"weighted mean {w_mean:,.0f}k ha")
-ax2b.set_xlabel(f"Prediction error, actual - predicted (1000 ha)\n"
-                 f"[{n_clipped} regions outside the 1st-99th percentile range not shown]")
-ax2b.set_ylabel("Production (current, summed)")
-ax2b.set_title("Production-weighted")
+w_mean = np.average(error_pct, weights=weight)
+ax2b.hist(error_pct, bins=60, range=hist_range, weights=weight, color=BASE_PALETTE[2], alpha=0.8)
+ax2b.axvline(0, color="0.3", linewidth=1)
+ax2b.axvline(w_mean, color=BASE_PALETTE[7], linewidth=1.5, label=f"weighted mean {w_mean:.1f}%")
+ax2b.set_xlabel("Prediction error \n(actual - predicted, % of area)")
+ax2b.set_ylabel("Production (summed)")
+ax2b.set_title("(b) Production-weighted")
 ax2b.legend(fontsize=8)
 
-fig2.suptitle(f"Brazil: how far off is beta's predicted pasture-area change from what actually happened?\n"
-              f"({len(df)} immediate regions)")
 fig2.tight_layout()
 
 # ---------------------------------------------------------------------------
@@ -212,8 +208,7 @@ fig2.tight_layout()
 # |error| / actual area instead measures accuracy in proportional terms.
 # ---------------------------------------------------------------------------
 
-pct_error = 100 * np.abs(error_ha) / A_Y
-uf_df = pd.DataFrame({"uf": df["uf"].values, "pct_error": pct_error, "weight": weight})
+uf_df = pd.DataFrame({"uf": df["uf"].values, "pct_error": np.abs(error_pct), "weight": weight})
 by_uf_pct = weighted_group_mean(uf_df, "uf", "pct_error", "weight", min_count=MIN_REGIONS_PER_UF).iloc[::-1]
 
 fig3, ax3 = plt.subplots(figsize=(8, 0.4 * len(by_uf_pct) + 2))
@@ -221,8 +216,7 @@ ax3.barh(np.arange(len(by_uf_pct)), by_uf_pct.values, color=BASE_PALETTE[0])
 ax3.set_yticks(np.arange(len(by_uf_pct)))
 ax3.set_yticklabels(by_uf_pct.index)
 ax3.set_xlabel("Production-weighted mean absolute % error in predicted pasture area")
-ax3.set_title(f"Brazil: states (uf) by production-weighted % land-use prediction miss\n"
-              f"(states with < {MIN_REGIONS_PER_UF} regions excluded)")
+ax3.set_title("(a) States (uf) by production-weighted % land-use prediction miss")
 fig3.tight_layout()
 
 plt.show()

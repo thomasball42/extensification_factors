@@ -29,8 +29,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 NATIONAL_TVP_PATH = Path("outputs") / "beta_animals.csv"
 NATIONAL_LINEAR_PATH = Path("outputs") / "beta_animals_linear.csv"
-REGIONAL_TVP_PATH = Path("..") / "brazil" / "outputs" / "beta_animals_local_Brazil.csv"
-REGIONAL_LINEAR_PATH = Path("..") / "brazil" / "outputs" / "beta_animals_linear_local_Brazil.csv"
+REGIONAL_TVP_PATH = Path("outputs") / "brazil" / "beta_animals_local_Brazil.csv"
+REGIONAL_LINEAR_PATH = Path("outputs") / "brazil" / "beta_animals_linear_local_Brazil.csv"
 
 OUT_PATH = Path("outputs") / "validation" / "brazil" / "beta_comparison_summary.csv"
 
