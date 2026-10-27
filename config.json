@@ -4,6 +4,10 @@
     "q_prior_strength": 0.9
   },
 
+  "area_method" : {
+    "area_method" : "physical_area"
+  },
+
   "faostat_aggregates": {
   "known_names": [
     "Cereals, primary", "Coarse Grain, primary", "Pulses, Total",

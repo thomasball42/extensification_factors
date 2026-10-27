@@ -6,10 +6,10 @@ from pathlib import Path
 from _stats import (
     fit_tvp_beta, build_raw_diffs, build_annual_diffs, residualize_two_way_fe,
 )
-from _utils import load_q_prior_config
+from _utils import NONLINEAR_OUTPUTS_PATH, load_q_prior_config
 
 DATA_PATH: Path = Path("data") / "inputs" # this needs the full production dataset from FAO
-OUT_PATH: Path = Path("outputs", "beta_animals.csv")
+OUT_PATH: Path = NONLINEAR_OUTPUTS_PATH / "beta_animals.csv"
 CONFIG_PATH: Path = Path(__file__).parent / "config.json"
 
 with open(CONFIG_PATH) as f:

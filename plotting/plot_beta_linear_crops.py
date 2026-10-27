@@ -1,6 +1,6 @@
 """
 Plots the static (full-sample OLS) beta values from
-outputs/beta_crops_linear.csv -- the linear counterpart to the
+outputs/<area_method>/linear/beta_crops_linear.csv -- the linear counterpart to the
 Kalman/TVP beta timeseries plotted by beta_timeseries_crops.py.
 
 One point (+/- beta_se) per (Item, Area), grouped into clusters by crop
@@ -18,9 +18,9 @@ from pathlib import Path
 import os
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from _utils import filter_list as _filter_list
+from _utils import LINEAR_OUTPUTS_PATH, filter_list as _filter_list
 
-dat_path = Path("outputs") / "beta_crops_linear.csv"
+dat_path = LINEAR_OUTPUTS_PATH / "beta_crops_linear.csv"
 figs_path = Path("..") / "figs" / "beta_linear_crops"
 SAVE = True
 

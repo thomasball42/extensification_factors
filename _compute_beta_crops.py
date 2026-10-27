@@ -8,15 +8,18 @@ Replaces OLS with a single state-space model per
     a_t = beta_t * p_t + u_t          u_t ~ N(0, R)      [observation eq.]
     beta_t = beta_{t-1} + eta_t       eta_t ~ N(0, Q)     [state eq., random walk]
 
-where a_t = Delta ln(Area harvested), p_t = Delta ln(Production). Before
-fitting, a_t and p_t are residualized against two-way (country + year) fixed
-effects -- estimated jointly across every country growing a given Item -- so
-that a shock hitting many countries in the same year (a global price spike, a
-widespread drought) is absorbed into a year effect instead of leaking into a
-country's estimated beta_t; see residualize_two_way_fe. Q and R are then
-estimated per series by maximum likelihood. Output is the *smoothed* beta_t
-(uses the whole series, not just past data) plus its standard error, for
-every year.
+where a_t = Delta ln(area), p_t = Delta ln(Production). The area is set by
+config.json's area_method: FAOSTAT Area harvested, or for "physical_area" the
+crop's allocated physical cropland, Area harvested / national cropping
+intensity (_utils.add_physical_area; only available for 2001-2019). Before
+fitting, a_t and p_t are demeaned per series (build_annual_diffs). Setting
+USE_RESIDUALIZATION instead residualizes them against two-way (country + year)
+fixed effects estimated jointly across every country growing a given Item
+(residualize_two_way_fe) -- off, as it didn't improve held-out accuracy. Q and
+R are then estimated per series by maximum likelihood, with a shrinkage prior
+on Q (config.json's "q_prior"). Output is the *smoothed* beta_t (uses the
+whole series, not just past data) plus its standard error, for every year.
+Validated by validation/holdout.py.
 
 """
 
@@ -26,10 +29,12 @@ from pathlib import Path
 from _stats import (
     fit_tvp_beta, build_raw_diffs, build_annual_diffs, residualize_two_way_fe,
 )
-from _utils import load_aggregate_matcher, load_q_prior_config
+from _utils import (
+    AREA_COL, AREA_METHOD, NONLINEAR_OUTPUTS_PATH, add_physical_area, load_aggregate_matcher, load_q_prior_config,
+)
 
 DATA_PATH: Path = Path("data") / "inputs" # this needs the full production dataset from FAO
-OUT_PATH: Path = Path("outputs", "beta_crops.csv")
+OUT_PATH: Path = NONLINEAR_OUTPUTS_PATH / "beta_crops.csv"
 
 MIN_OBS: int = 15  # minimum number of valid (non-missing) yearly diff pairs required to fit
 USE_Q_PRIOR: bool = True  # shrinkage prior on Q (see _stats.q_shrinkage_penalty); False = unregularized MLE
@@ -39,6 +44,7 @@ is_aggregate = load_aggregate_matcher()
 Q_PRIOR_SCALE, Q_PRIOR_STRENGTH = load_q_prior_config() if USE_Q_PRIOR else (None, 1.0)
 
 elements = ["Area harvested", "Production", "Yield"]
+series_cols = [AREA_COL, "Production", "Yield"]  # a year is used only if all of these are present
 columns = ["Area", "Area Code", "Item", "Item Code", "Element", "Year", "Value", "Unit"]
 
 
@@ -68,6 +74,9 @@ wide = df.pivot_table(
     index=["Area", "Area Code", "Item", "Item Code", "Year"], columns="Element", values="Value"
 ).reset_index()
 
+if AREA_METHOD == "physical_area":
+    wide = add_physical_area(wide)
+
 records = []
 items = wide[["Item", "Item Code"]].drop_duplicates().values.tolist()
 
@@ -76,7 +85,7 @@ for i, (item, item_code) in enumerate(items):
 
     area_data = {}
     for (area, area_code), g in g_item.groupby(["Area", "Area Code"]):
-        g = g.sort_values("Year").dropna(subset=elements)
+        g = g.sort_values("Year").dropna(subset=series_cols)
         if len(g) < MIN_OBS + 1:
             continue
         area_data[area_code] = {"area": area, "g": g}
@@ -94,10 +103,10 @@ for i, (item, item_code) in enumerate(items):
         for area_code, meta in area_data.items():
             g = meta["g"]
             with np.errstate(divide="ignore"):
-                log_AH = np.log(g["Area harvested"].values)
+                log_A = np.log(g[AREA_COL].values)
                 log_P = np.log(g["Production"].values)
             years = g["Year"].values.astype(int)
-            diff_years, a_t, p_t = build_raw_diffs(years, log_AH, log_P)
+            diff_years, a_t, p_t = build_raw_diffs(years, log_A, log_P)
             panel_rows.append(pd.DataFrame({
                 "entity": area_code, "time": diff_years, "a": a_t, "p": p_t,
             }))
@@ -113,10 +122,10 @@ for i, (item, item_code) in enumerate(items):
         for area_code, meta in area_data.items():
             g = meta["g"]
             with np.errstate(divide="ignore"):
-                log_AH = np.log(g["Area harvested"].values)
+                log_A = np.log(g[AREA_COL].values)
                 log_P = np.log(g["Production"].values)
             years = g["Year"].values.astype(int)
-            diffs_by_area[area_code] = build_annual_diffs(years, log_AH, log_P)
+            diffs_by_area[area_code] = build_annual_diffs(years, log_A, log_P)
 
     # fit the TVP Kalman model per country on its residualized/demeaned diffs.
     for area_code, meta in area_data.items():
@@ -143,6 +152,8 @@ for i, (item, item_code) in enumerate(items):
             "q_prior_scale": Q_PRIOR_SCALE,
             "q_prior_strength": Q_PRIOR_STRENGTH,
         }
+        if AREA_METHOD == "physical_area":
+            record[f"current_physical_area_{ha_unit}"] = g["Physical area"].values[-1]
 
         for yr, beta, se in zip(diff_years, fit["beta"], fit["se"]):
             record[f"beta_{int(yr)}"] = beta

@@ -4,7 +4,7 @@ Static (non-time-varying) OLS counterpart to compute_beta_animals.py.
 Fits a single full-sample beta per Area (pasture-based animal products vs.
 grazing land area) by OLS, using the same reindexed/demeaned annual
 differences (build_annual_diffs) that the TVP pipeline uses, so this output
-is a like-for-like comparison baseline for outputs/beta_animals.csv -- see
+is a like-for-like comparison baseline for outputs/<area_method>/nonlinear/beta_animals.csv -- see
 compute_beta_crops_linear.py for the crops counterpart.
 """
 
@@ -15,9 +15,10 @@ import pandas as pd
 from pathlib import Path
 from scipy.stats import linregress
 from _stats import build_annual_diffs
+from _utils import LINEAR_OUTPUTS_PATH
 
 DATA_PATH: Path = Path("data") / "inputs" # this needs the full production dataset from FAO
-OUT_PATH: Path = Path("outputs", "beta_animals_linear.csv")
+OUT_PATH: Path = LINEAR_OUTPUTS_PATH / "beta_animals_linear.csv"
 CONFIG_PATH: Path = Path(__file__).parent / "config.json"
 
 with open(CONFIG_PATH) as f:

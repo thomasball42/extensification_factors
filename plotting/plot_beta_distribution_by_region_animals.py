@@ -17,9 +17,11 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from _utils import NONLINEAR_OUTPUTS_PATH
 from _geo import load_country_codes, load_world
 
-dat_path = Path("outputs") / "beta_animals.csv"
+dat_path = NONLINEAR_OUTPUTS_PATH / "beta_animals.csv"
 figs_path = Path("..") / "figs" / "beta_distribution_by_region_animals"
 SAVE = True
 

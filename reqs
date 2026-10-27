@@ -7,3 +7,7 @@ scipy
 geopandas
 requests
 linearmodels
+libarchive-c
+
+# only required for processing of Liu data
+yirgacheffe # note that this might fail to pip install depending on whether you have gdal installed on your system

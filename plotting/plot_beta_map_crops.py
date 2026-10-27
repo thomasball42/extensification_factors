@@ -26,9 +26,9 @@ from matplotlib.colors import ListedColormap, Normalize
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from _geo import load_country_codes, load_world, time_windows
-from _utils import filter_list as _filter_list
+from _utils import NONLINEAR_OUTPUTS_PATH, filter_list as _filter_list
 
-dat_path = Path("outputs") / "beta_crops.csv"
+dat_path = NONLINEAR_OUTPUTS_PATH / "beta_crops.csv"
 figs_path = Path("..") / "figs" / "beta_map_crops"
 SAVE = True
 

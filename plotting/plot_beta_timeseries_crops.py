@@ -6,9 +6,9 @@ import os
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from _utils import filter_list as _filter_list
+from _utils import NONLINEAR_OUTPUTS_PATH, filter_list as _filter_list
 
-dat_path = Path("outputs") / "beta_crops.csv"
+dat_path = NONLINEAR_OUTPUTS_PATH / "beta_crops.csv"
 figs_path = Path("..") / "figs" / "beta_timeseries_crops"
 SAVE = True
 
