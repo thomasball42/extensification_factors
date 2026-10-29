@@ -77,22 +77,23 @@ def tvp_log_var(fit, p_ahead):
     return p_ahead.sum() ** 2 * fit["se"][-1] ** 2 + fit["Q"] * np.sum(tail ** 2) + len(p_ahead) * fit["R"]
 
 
-def score_series(g):
+def split_series(g, area_col=AREA_COL):
     """g: one (Area, Item) series' rows of load_crop_wide(), sorted by Year,
-    with CROP_SERIES_COLS present. Returns one record per held-out horizon
-    h = 1..HOLDOUT_YEARS, or [] if the series doesn't qualify."""
+    with area_col, Production and Yield present. Splits off the last
+    HOLDOUT_YEARS diffs and fits the static OLS beta on the rest; returns
+    None if the series doesn't qualify."""
     if len(g) < MIN_TRAIN_OBS + HOLDOUT_YEARS + 1:
-        return []
+        return None
     years = g["Year"].values.astype(int)
     with np.errstate(divide="ignore"):
-        diff_years, a, p = build_raw_diffs(years, np.log(g[AREA_COL].values), np.log(g["Production"].values))
+        diff_years, a, p = build_raw_diffs(years, np.log(g[area_col].values), np.log(g["Production"].values))
 
     train_end = len(a) - HOLDOUT_YEARS
     valid = np.isfinite(a) & np.isfinite(p)
     train = valid[:train_end]
     # the held-out years must be complete: every prediction chains from A_T
     if train.sum() < MIN_TRAIN_OBS or not valid[train_end:].all():
-        return []
+        return None
 
     # demean with training means only, so nothing from the held-out years leaks into the fit
     a_tr = np.where(train, a[:train_end] - a[:train_end][train].mean(), np.nan)
@@ -101,10 +102,27 @@ def score_series(g):
     x, y = p_tr[train], a_tr[train]
     sxx = x @ x
     if not sxx > 0:
-        return []
+        return None
     beta_static = (x @ y) / sxx
     sigma2_static = np.sum((y - beta_static * x) ** 2) / (len(x) - 2)  # slope + intercept (the demeaning)
-    se2_static = sigma2_static / sxx
+
+    area = pd.Series(g[area_col].values, index=years)
+    return {
+        "diff_years": diff_years, "train_end": train_end, "n_train": int(train.sum()),
+        "a_tr": a_tr, "p_tr": p_tr, "p_test": p[train_end:],
+        "beta_static": beta_static, "sigma2_static": sigma2_static, "se2_static": sigma2_static / sxx,
+        "area": area, "A_T": area[diff_years[train_end - 1]],
+    }
+
+
+def score_series(g, area_col=AREA_COL):
+    """g: as for split_series. Returns one record per held-out horizon
+    h = 1..HOLDOUT_YEARS, or [] if the series doesn't qualify."""
+    s = split_series(g, area_col)
+    if s is None:
+        return []
+    diff_years, train_end, a_tr, p_tr = s["diff_years"], s["train_end"], s["a_tr"], s["p_tr"]
+    beta_static, sigma2_static, se2_static = s["beta_static"], s["sigma2_static"], s["se2_static"]
 
     fits = {
         "tvp": fit_tvp_beta(a_tr, p_tr, min_obs=MIN_TRAIN_OBS, q_prior_scale=Q_PRIOR_SCALE, q_prior_strength=Q_PRIOR_STRENGTH),
@@ -123,16 +141,14 @@ def score_series(g):
     series_info = {
         "train_start": int(diff_years[0]) - 1,
         "train_end": int(diff_years[train_end - 1]),
-        "n_train": int(train.sum()),
+        "n_train": s["n_train"],
         "beta_tvp": betas["tvp"], "se_tvp": fits["tvp"]["se"][-1],
         "Q_hat": fits["tvp"]["Q"], "R_hat": fits["tvp"]["R"],
         "beta_tvp_no_prior": betas["tvp_no_prior"],
         "beta_static": beta_static, "se_static": np.sqrt(se2_static),
     }
 
-    area = pd.Series(g[AREA_COL].values, index=years)
-    A_T = area[diff_years[train_end - 1]]
-    p_test = p[train_end:]
+    area, A_T, p_test = s["area"], s["A_T"], s["p_test"]
 
     records = []
     for h in range(1, HOLDOUT_YEARS + 1):

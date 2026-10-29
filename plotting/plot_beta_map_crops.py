@@ -163,6 +163,7 @@ diff_label = f"{hist2_label} minus {hist1_label}"
 vmin = norm_min_max[0] if norm_min_max[0] is not None else np.nanmin(recent_beta.values)
 vmax = norm_min_max[1] if norm_min_max[1] is not None else np.nanpercentile(recent_beta.values, 99)
 norm = ZeroFractionNorm(vmin=vmin, vmax=vmax, zero_frac=ZERO_FRAC)
+
 cmap = zero_fraction_cmap(CMAP, vmin, vmax, ZERO_FRAC)
 
 diff_vlim = np.nanpercentile(np.abs(diff_beta.values), 99)
